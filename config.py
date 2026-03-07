@@ -1,1 +1,4 @@
-TOKEN ="MTQ3MTI2MTgwMjg2MzEzMjc2NA.GonzyO.vnnKXcc3UjhFHiRKmjL2izJX4oDHY5M0b88Zy4"
+import os
+
+TOKEN = os.getenv("TOKEN")
+bot.run(TOKEN)
