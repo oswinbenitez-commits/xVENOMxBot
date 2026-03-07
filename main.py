@@ -151,7 +151,7 @@ async def marcar_eventos_finalizados():
     if cambios:
         guardar_eventos()         
 
-@tasks.loop(minutes=5)  # Revisa cada 5 minutos
+@tasks.loop(minutes=1)  # Revisa cada 1 minuto
 async def revisar_eventos():
     await marcar_eventos_finalizados()
 
@@ -1405,7 +1405,7 @@ async def on_ready():
     if not limpiar_eventos_json.is_running():
         limpiar_eventos_json.start()
 
-@tasks.loop(minutes=5)
+@tasks.loop(minutes=1)
 async def limpiar_eventos_json():
     ahora = datetime.now(timezone.utc)
     cambios = False
@@ -1444,4 +1444,5 @@ async def on_message_delete(message):
 import os
 
 bot.run(os.environ["TOKEN"])
+
 
