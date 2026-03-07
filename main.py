@@ -1441,4 +1441,5 @@ async def on_message_delete(message):
 
         print(f"Evento eliminado automáticamente: {message.id}")
 
+from config import TOKEN
 bot.run(TOKEN)
