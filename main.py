@@ -2,7 +2,7 @@ import discord
 from discord.ext import commands, tasks
 from discord import app_commands
 from datetime import datetime, timezone, timedelta #Zona horaria sistema
-from config import TOKEN  # 🔐 Token seguro
+
 import json
 import os
 
@@ -1441,5 +1441,7 @@ async def on_message_delete(message):
 
         print(f"Evento eliminado automáticamente: {message.id}")
 
-from config import TOKEN
-bot.run(TOKEN)
+import os
+
+bot.run(os.environ["TOKEN"])
+
