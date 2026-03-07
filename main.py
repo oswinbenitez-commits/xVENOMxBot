@@ -1405,7 +1405,7 @@ async def on_ready():
     if not limpiar_eventos_json.is_running():
         limpiar_eventos_json.start()
 
-@tasks.loop(minutes=1)
+@tasks.loop(minutes=5)
 async def limpiar_eventos_json():
     ahora = datetime.now(timezone.utc)
     cambios = False
@@ -1444,5 +1444,6 @@ async def on_message_delete(message):
 import os
 
 bot.run(os.environ["TOKEN"])
+
 
 
