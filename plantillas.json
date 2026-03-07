@@ -1,0 +1,141 @@
+{
+    "1063274260803629096": {
+        "picachu": {
+            "fecha": "Pendiente",
+            "hora": "Pendiente",
+            "lugar": "Pendiente",
+            "descripcion": "00000000/1111111111",
+            "roles": {
+                "uno": {
+                    "nombre": "uno",
+                    "emoji": null,
+                    "cupo": 1,
+                    "usuarios": []
+                },
+                "dos": {
+                    "nombre": "dos",
+                    "emoji": null,
+                    "cupo": 2,
+                    "usuarios": []
+                }
+            },
+            "rol": 1261634940219428914,
+            "imagen": "https://i.pinimg.com/1200x/4b/8f/a1/4b8fa11571e6a16cc6aa8952816d347b.jpg"
+        },
+        "Vaporeon": {
+            "fecha": "Pendiente",
+            "hora": "Pendiente",
+            "lugar": "Pendiente",
+            "descripcion": "00000000/1111111111",
+            "roles": {
+                "uno": {
+                    "nombre": "uno",
+                    "emoji": null,
+                    "cupo": 1,
+                    "usuarios": []
+                },
+                "dos": {
+                    "nombre": "dos",
+                    "emoji": null,
+                    "cupo": 2,
+                    "usuarios": []
+                },
+                "tres": {
+                    "nombre": "tres",
+                    "emoji": "🕸️",
+                    "cupo": 1,
+                    "usuarios": []
+                },
+                "cuatro": {
+                    "nombre": "cuatro",
+                    "emoji": "🔥",
+                    "cupo": 1,
+                    "usuarios": []
+                }
+            },
+            "rol": 1261634940219428914,
+            "imagen": "https://i.pinimg.com/avif/1200x/a4/2d/6e/a42d6e289880febf891f6de8aa41719f.avf"
+        },
+        "oswin": {
+            "fecha": "Pendiente",
+            "hora": "Pendiente",
+            "lugar": "Pendiente",
+            "descripcion": "casa",
+            "roles": {
+                "tabbi": {
+                    "nombre": "tabbi",
+                    "emoji": null,
+                    "cupo": 1,
+                    "usuarios": []
+                },
+                "micho": {
+                    "nombre": "micho",
+                    "emoji": null,
+                    "cupo": 1,
+                    "usuarios": []
+                }
+            },
+            "rol": null,
+            "imagen": null
+        }
+    },
+    "1375344472594055258": {
+        "Mario Bros": {
+            "fecha": "Pendiente",
+            "hora": "Pendiente",
+            "lugar": "Pendiente",
+            "descripcion": "11111111111/22222222",
+            "roles": {
+                "mario": {
+                    "nombre": "mario",
+                    "emoji": "🔥",
+                    "cupo": 1,
+                    "usuarios": []
+                },
+                "luigi": {
+                    "nombre": "Luigi",
+                    "emoji": null,
+                    "cupo": 1,
+                    "usuarios": []
+                }
+            },
+            "rol": 1375356718862831677,
+            "imagen": "https://i.pinimg.com/avif/736x/5b/cc/2b/5bcc2bfdbb77432bca196e90ba8a4d07.avf"
+        },
+        "Bouser": {
+            "fecha": "Pendiente",
+            "hora": "Pendiente",
+            "lugar": "Pendiente",
+            "descripcion": "11111111111/22222222",
+            "roles": {
+                "mario": {
+                    "nombre": "mario",
+                    "emoji": "🔥",
+                    "cupo": 1,
+                    "usuarios": []
+                },
+                "luigi": {
+                    "nombre": "Luigi",
+                    "emoji": null,
+                    "cupo": 1,
+                    "usuarios": []
+                },
+                "bouser": {
+                    "nombre": "Bouser",
+                    "emoji": "⛑️",
+                    "cupo": 1,
+                    "usuarios": []
+                },
+                "peach": {
+                    "nombre": "Peach",
+                    "emoji": "👤",
+                    "cupo": 1,
+                    "usuarios": []
+                }
+            },
+            "rol": 1375356718862831677,
+            "imagen": "https://i.pinimg.com/avif/736x/d8/d4/31/d8d431a29080cd7c3f5d8a76e8153e3f.avf"
+        }
+    }
+   
+}

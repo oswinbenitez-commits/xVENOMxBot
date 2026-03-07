@@ -1,0 +1,111 @@
+{
+    "GUILD_ID": {},
+    "1375344472594055258": {
+        "1479954935587278928": {
+            "nombre": "hippy",
+            "fecha": "09-03-2026",
+            "hora": "00:00",
+            "lugar": "casa",
+            "descripcion": "0000/1111/222/3333",
+            "roles": {
+                "uno": {
+                    "nombre": "uno",
+                    "emoji": "<:que:1387952938215014574> ",
+                    "cupo": 1,
+                    "usuarios": []
+                },
+                "dos": {
+                    "nombre": "dos",
+                    "emoji": "<:haaa:1387952984138321970>",
+                    "cupo": 1,
+                    "usuarios": []
+                }
+            },
+            "rol": 1375356356281765958,
+            "canal": 1375346456453582858,
+            "creador": 753458144176504933,
+            "cerrado": false,
+            "imagen": "https://i.pinimg.com/avif/1200x/85/32/42/8532427f02ebc1d595bbb8162a93ff70.avf",
+            "banca": [],
+            "recordatorio_enviado": false,
+            "dm_enviado": false,
+            "terminado": false
+        },
+        "1479964387740487815": {
+            "nombre": "Demasionos 2",
+            "fecha": "09-03-2026",
+            "hora": "00:00",
+            "lugar": "casa",
+            "descripcion": "0000/1111/222/3333",
+            "roles": {
+                "uno": {
+                    "nombre": "uno",
+                    "emoji": "<:que:1387952938215014574> ",
+                    "cupo": 1,
+                    "usuarios": []
+                },
+                "dos": {
+                    "nombre": "dos",
+                    "emoji": "<:haaa:1387952984138321970>",
+                    "cupo": 1,
+                    "usuarios": [
+                        753458144176504933
+                    ]
+                }
+            },
+            "rol": 1375356356281765958,
+            "canal": 1375346456453582858,
+            "creador": 753458144176504933,
+            "cerrado": false,
+            "imagen": "https://i.pinimg.com/avif/1200x/85/32/42/8532427f02ebc1d595bbb8162a93ff70.avf",
+            "banca": [],
+            "recordatorio_enviado": false,
+            "dm_enviado": false,
+            "terminado": false
+        },
+        "1479968688605106337": {
+            "fecha": "Pendiente",
+            "hora": "Pendiente",
+            "lugar": "Casa",
+            "descripcion": "11111111111/22222222",
+            "roles": {
+                "mario": {
+                    "nombre": "mario",
+                    "emoji": "🔥",
+                    "cupo": 1,
+                    "usuarios": []
+                },
+                "luigi": {
+                    "nombre": "Luigi",
+                    "emoji": null,
+                    "cupo": 1,
+                    "usuarios": []
+                },
+                "bouser": {
+                    "nombre": "Bouser",
+                    "emoji": "⛑️",
+                    "cupo": 1,
+                    "usuarios": [
+                        753458144176504933
+                    ]
+                },
+                "peach": {
+                    "nombre": "Peach",
+                    "emoji": "👤",
+                    "cupo": 1,
+                    "usuarios": []
+                }
+            },
+            "rol": 1375356718862831677,
+            "imagen": "https://i.pinimg.com/avif/736x/d8/d4/31/d8d431a29080cd7c3f5d8a76e8153e3f.avf",
+            "nombre": "Bouser",
+            "creador": 753458144176504933,
+            "canal": 1375346456453582858,
+            "cerrado": false,
+            "banca": [],
+            "recordatorio_enviado": false,
+            "dm_enviado": false
+        }
+    },
+    "1063274260803629096": {}
+}
