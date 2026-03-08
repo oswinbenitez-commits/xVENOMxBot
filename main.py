@@ -1248,6 +1248,14 @@ async def gestionar_eventos():
             mensaje = await canal.fetch_message(message_id)
         except Exception:
             continue
+        
+        # 🔹 ACTUALIZAR CONTADOR
+        try:
+            await mensaje.edit(embed=construir_embed(evento))
+        except:
+            pass
+        except Exception:
+            continue
 
         # Calcular tiempo para recordatorio 20 min antes y DM 10 min antes
         if evento["fecha"] == "Pendiente" or evento["hora"] == "Pendiente":
@@ -1444,6 +1452,7 @@ async def on_message_delete(message):
 import os
 
 bot.run(os.environ["TOKEN"])
+
 
 
 
