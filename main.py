@@ -914,7 +914,25 @@ class EditarCampoModal(discord.ui.Modal):
             evento["nombre"] = nuevo_valor
         elif self.campo == "Fecha":
             evento["fecha"] = nuevo_valor
+            evento.pop("ultimo_minuto", None)
+            evento["recordatorio_enviado"] = False
+            evento["dm_enviado"] = False
+        
         elif self.campo == "Hora":
+            try:
+                datetime.strptime(nuevo_valor, "%H:%M")
+                evento["hora"] = nuevo_valor
+        
+                evento.pop("ultimo_minuto", None)
+                evento["recordatorio_enviado"] = False
+                evento["dm_enviado"] = False
+        
+            except ValueError:
+                await interaction.response.send_message(
+                    "❌ Formato de hora inválido. Debe ser HH:MM en UTC.",
+                    ephemeral=True
+                )
+                return
             try:
                 datetime.strptime(nuevo_valor, "%H:%M")
                 evento["hora"] = nuevo_valor
@@ -929,7 +947,7 @@ class EditarCampoModal(discord.ui.Modal):
             evento["descripcion"] = nuevo_valor
 
         try:
-            mensaje = await interaction.channel.fetch_message(self.mensaje_id)
+            mensaje = interaction.message
             await mensaje.edit(embed=construir_embed(evento))
         except Exception:
             pass
@@ -1449,6 +1467,7 @@ async def on_message_delete(message):
 import os
 
 bot.run(os.environ["TOKEN"])
+
 
 
 
