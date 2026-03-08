@@ -947,10 +947,11 @@ class EditarCampoModal(discord.ui.Modal):
             evento["descripcion"] = nuevo_valor
 
         try:
-            mensaje = interaction.message
+            canal = interaction.channel
+            mensaje = await canal.fetch_message(self.mensaje_id)
             await mensaje.edit(embed=construir_embed(evento))
-        except Exception:
-            pass
+        except Exception as e:
+            print("Error actualizando evento:", e)
         guardar_eventos()
         await interaction.response.send_message(f"✅ {self.campo} actualizado correctamente.", ephemeral=True)
 ## ## ## ## ## ## #
@@ -1467,6 +1468,7 @@ async def on_message_delete(message):
 import os
 
 bot.run(os.environ["TOKEN"])
+
 
 
 
