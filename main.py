@@ -1236,7 +1236,7 @@ async def enviar_dm_recordatorio(evento):
 # =============================
 # LOOP UNIFICADO PARA ACTUALIZAR, RECORDAR Y CERRAR EVENTOS
 # =============================
-@tasks.loop(minutes=1)
+@tasks.loop(seconds=30)
 async def gestionar_eventos():
     ahora = datetime.now(timezone.utc)
 
@@ -1244,20 +1244,10 @@ async def gestionar_eventos():
         canal = bot.get_channel(evento["canal"])
         if not canal:
             continue
-        try:
-            mensaje = await canal.fetch_message(message_id)
-        except Exception:
-            continue
-        
-        # 🔹 ACTUALIZAR CONTADOR
-        try:
-            await mensaje.edit(embed=construir_embed(evento))
-        except:
-            pass
-        except Exception:
-            continue
 
-        # Calcular tiempo para recordatorio 20 min antes y DM 10 min antes
+        mensaje = canal.get_partial_message(message_id)
+
+        # si no tiene fecha u hora
         if evento["fecha"] == "Pendiente" or evento["hora"] == "Pendiente":
             continue
 
@@ -1266,23 +1256,30 @@ async def gestionar_eventos():
             continue
 
         minutos_para_evento = (dt_evento - ahora).total_seconds() / 60
+        minutos_restantes = int((dt_evento - ahora).total_seconds() // 60)
 
-        # ================= RECORDATORIO 20 MIN =======
+        # actualizar contador
+        if evento.get("ultimo_minuto") != minutos_restantes:
+            evento["ultimo_minuto"] = minutos_restantes
+            try:
+                await mensaje.edit(embed=construir_embed(evento))
+            except Exception:
+                pass
+
+        # RECORDATORIO 20 MIN
         if 19 <= minutos_para_evento <= 20 and not evento.get("recordatorio_enviado", False):
             await enviar_recordatorio(evento, message_id)
 
-        # ================= DM 10 MIN =======
+        # DM 10 MIN
         if 9 <= minutos_para_evento <= 10 and not evento.get("dm_enviado", False):
             await enviar_dm_recordatorio(evento)
 
-        # ================= CERRAR EVENTO =======
-        if minutos_para_evento < -90:  # 1h30 después del inicio
+        # cerrar evento
+        if minutos_para_evento < -90:
             try:
                 await mensaje.edit(view=None)
             except Exception:
                 pass
-
-
 
 # =============================
 # COMANDO /HELP VISUAL FORMATEADO
@@ -1452,6 +1449,7 @@ async def on_message_delete(message):
 import os
 
 bot.run(os.environ["TOKEN"])
+
 
 
 
