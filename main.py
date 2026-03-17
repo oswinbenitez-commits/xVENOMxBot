@@ -677,14 +677,23 @@ class ConfirmarUsarPlantillaView(discord.ui.View):
 # SELECT ELIMINAR PLANTILLA
 # =============================
 class SeleccionarPlantillaEliminar(discord.ui.Select):
-    def __init__(self, user_id):
+    def __init__(self, user_id, guild_id):
+        plantillas_actuales = plantillas_por_guild.get(guild_id, {})
+
+        opciones = [
+            discord.SelectOption(label=nombre, description=f"Plantilla: {nombre}")
+            for nombre in plantillas_actuales.keys()
+        ]
+
         super().__init__(
             placeholder="Selecciona una plantilla para eliminar...",
             min_values=1,
             max_values=1,
-            options=[]
+            options=opciones
         )
+
         self.user_id = user_id
+        self.guild_id = guild_id
 
     async def callback(self, interaction: discord.Interaction):
         if interaction.user.id != self.user_id:
@@ -694,22 +703,16 @@ class SeleccionarPlantillaEliminar(discord.ui.Select):
             )
             return
 
-        guild_id = interaction.guild.id if interaction.guild else 0
+        guild_id = self.guild_id
         plantillas_actuales = plantillas_por_guild.get(guild_id, {})
-
-        opciones = [
-            discord.SelectOption(label=nombre, description=f"Plantilla: {nombre}")
-            for nombre in plantillas_actuales.keys()
-        ]
-
-        if not self.options:  # si no se habían cargado opciones
-            self.options = opciones
 
         nombre = self.values[0]
         plantilla = plantillas_actuales.get(nombre)
+
         if not plantilla:
             await interaction.response.send_message(
-                "❌ Plantilla no encontrada en este servidor.", ephemeral=True
+                "❌ Plantilla no encontrada en este servidor.",
+                ephemeral=True
             )
             return
 
