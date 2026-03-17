@@ -1152,12 +1152,7 @@ async def eliminar_plantilla(interaction: discord.Interaction):
         return
 
     # Abrir el menú de selección
-    view = SeleccionarPlantillaEliminar(interaction.user.id)
-    # ⚡ Cargar opciones en el select
-    view.options = [
-        discord.SelectOption(label=nombre, description=f"Plantilla: {nombre}")
-        for nombre in plantillas_actuales.keys()
-    ]
+   view = SeleccionarPlantillaEliminarView(interaction.user.id)
 
     await interaction.response.send_message(
         "Selecciona la plantilla que deseas eliminar:",
