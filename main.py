@@ -740,9 +740,9 @@ class SeleccionarPlantillaEliminar(discord.ui.Select):
 
 #========== comando eliminar plantilla view ==========
 class SeleccionarPlantillaEliminarView(discord.ui.View):
-    def __init__(self, user_id):
+    def __init__(self, user_id, guild_id):
         super().__init__(timeout=60)
-        self.add_item(SeleccionarPlantillaEliminar(user_id))
+        self.add_item(SeleccionarPlantillaEliminar(user_id, guild_id))
 
 
 # =============================
