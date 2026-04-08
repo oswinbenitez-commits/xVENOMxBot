@@ -765,7 +765,13 @@ class ConfirmarEliminarPlantillaView(discord.ui.View):
         if guild_id in plantillas_por_guild and self.nombre in plantillas_por_guild[guild_id]:
             plantillas_por_guild[guild_id].pop(self.nombre)
             guardar_plantillas()
-
+            
+        await interaction.response.edit_message(
+            content=f"✅ Plantilla '{self.nombre}' eliminada.",
+            embed=None,
+            view=None
+        )
+        
     @discord.ui.button(label="No", style=discord.ButtonStyle.secondary)
     async def cancelar(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user.id != self.user_id:
@@ -1155,7 +1161,7 @@ async def eliminar_plantilla(interaction: discord.Interaction):
         return
 
     # Abrir el menú de selección
-    view = SeleccionarPlantillaEliminarView(interaction.user.id)
+    view = SeleccionarPlantillaEliminarView(interaction.user.id, guild_id)
 
     await interaction.response.send_message(
         "Selecciona la plantilla que deseas eliminar:",
