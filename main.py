@@ -1,10 +1,11 @@
 import discord
 from discord.ext import commands, tasks
 from discord import app_commands
-from datetime import datetime, timezone, timedelta #Zona horaria sistema
 
+from datetime import datetime, timezone, timedelta
 import json
 import os
+import copy
 
 ARCHIVO_PLANTILLAS = "plantillas.json"
 
@@ -594,8 +595,8 @@ class SeleccionarPlantillaView(discord.ui.View):
         self.add_item(SeleccionarPlantilla(user_id, guild_id))
 
 #========== comando usar plantilas Botones==========
-import copy
-import discord
+
+
 
 class ConfirmarUsarPlantillaView(discord.ui.View):
     def __init__(self, user_id, plantilla):
@@ -765,7 +766,7 @@ class ConfirmarEliminarPlantillaView(discord.ui.View):
         if guild_id in plantillas_por_guild and self.nombre in plantillas_por_guild[guild_id]:
             plantillas_por_guild[guild_id].pop(self.nombre)
             guardar_plantillas()
-            
+
         await interaction.response.edit_message(
             content=f"✅ Plantilla '{self.nombre}' eliminada.",
             embed=None,
@@ -981,8 +982,8 @@ async def crear_plantilla(
     lista_roles = [r.strip() for r in roles.split(",") if r.strip()]
 
     if not interaction.user.guild_permissions.administrator:
-            await interaction.response.send_message("❌ Solo administradores pueden usar este comando.", ephemeral=True)
-            return
+        await interaction.response.send_message("❌ Solo administradores pueden usar este comando.", ephemeral=True)
+        return
     
     if len(lista_roles) > 20:
         await interaction.response.send_message("❌ Solo se permiten un máximo de 20 roles.", ephemeral=True)
@@ -1469,7 +1470,7 @@ async def on_message_delete(message):
 
         print(f"Evento eliminado automáticamente: {message.id}")
 
-import os
+
 
 bot.run(os.environ["TOKEN"])
 
