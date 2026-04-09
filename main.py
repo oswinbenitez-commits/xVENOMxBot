@@ -312,21 +312,25 @@ def construir_embed(evento):
 
 
     # ============================= COLUMNAS =============================
-    if evento["fecha"] == "Pendiente" or evento["hora"] == "Pendiente":
+    if evento.get("ocultar_fecha_hora"):
         timestamp = None
-        estado = "⌛ Pendiente"
+        estado = "🔒 Información oculta"
     else:
-        try:
-            dt = datetime.strptime(
-                f"{evento['fecha']} {evento['hora']}",
-                "%d-%m-%Y %H:%M"
-            )
-            dt = dt.replace(tzinfo=timezone.utc)
-            timestamp = int(dt.timestamp())
-            estado = estado_evento(timestamp)
-        except ValueError:
+        if evento["fecha"] == "Pendiente" or evento["hora"] == "Pendiente":
             timestamp = None
-            estado = "❌ Fecha inválida"
+            estado = "⌛ Pendiente"
+        else:
+            try:
+                dt = datetime.strptime(
+                    f"{evento['fecha']} {evento['hora']}",
+                    "%d-%m-%Y %H:%M"
+                )
+                dt = dt.replace(tzinfo=timezone.utc)
+                timestamp = int(dt.timestamp())
+                estado = estado_evento(timestamp)
+            except ValueError:
+                timestamp = None
+                estado = "❌ Fecha inválida"
 
     if timestamp is None:
         columna_1 = (
@@ -335,29 +339,47 @@ def construir_embed(evento):
             f"📍 {evento['lugar']}\n"
         )
     else:
-        columna_1 = (
-            f"🗓 <t:{timestamp}:D>\n\n"
-            f"{estado}\n\n"
-            f"📍 {evento['lugar']}\n"
-        )
+        if evento.get("ocultar_fecha_hora"):
+            columna_1 = (
+                f"🗓 🔒 Oculto\n\n"
+                f"{estado}\n\n"
+                f"📍 {evento['lugar']}\n"
+            )
+        else:
+            if timestamp is None:
+                columna_1 = (
+                    f"🗓 Pendiente\n\n"
+                    f"{estado}\n\n"
+                    f"📍 {evento['lugar']}\n"
+                )
+            else:
+                columna_1 = (
+                    f"🗓 <t:{timestamp}:D>\n\n"
+                    f"{estado}\n\n"
+                    f"📍 {evento['lugar']}\n"
+                )
 
     if evento.get("rol"):
         columna_1 += f"\n<@&{evento['rol']}>"
     
     columna_2 = ""
     # Mostrar la hora en varias zonas, con alineación
-    if evento["hora"] == "Pendiente":
-        horas_lista = [
-        "⏰   ♾️ -- UTC",
-        "⏰   ♾️ MX",
-        "⏰   ♾️ CO",
-        "⏰   ♾️ PE",
-        "⏰   ♾️ VE",
-    ]
+    if evento.get("ocultar_fecha_hora"):
+        horas_lista = ["🔒 Oculto"]
     else:
-        horas_multi = formatear_horas_multizona(evento["hora"])
-        horas_lista = horas_multi.split("\n")
-        
+        if evento["hora"] == "Pendiente":
+            horas_lista = [
+                "⏰   ♾️ -- UTC",
+                "⏰   ♾️ MX",
+                "⏰   ♾️ CO",
+                "⏰   ♾️ PE",
+                "⏰   ♾️ VE",
+            ]
+        else:
+            horas_multi = formatear_horas_multizona(evento["hora"])
+            horas_lista = horas_multi.split("\n")
+        if evento.get("ocultar_fecha_hora"):
+            embed.set_footer(text="Información sensible oculta permanentemente")
 
     # Aseguramos que las horas estén alineadas, con espacio a la derecha
     max_long = max(len(linea) for linea in horas_lista)  # Encontramos el texto más largo
@@ -418,7 +440,7 @@ def construir_embed(evento):
         embed.set_image(url=evento["imagen"])
 
     # ============================= FOOTER =============================
-    if evento_finalizado(evento):
+    if evento.get("cerrado", False) or evento_finalizado(evento):
         embed.set_footer(text="Evento finalizado • Panel bloqueado")
 
     return embed
@@ -453,6 +475,7 @@ class BotonRol(discord.ui.Button):
         self.rol_id = rol_id
 
     async def callback(self, interaction: discord.Interaction):
+        
         if not self.view or not self.view.message_id:
             return
         evento = eventos.get(self.view.message_id)
@@ -508,6 +531,7 @@ class BotonRol(discord.ui.Button):
 
         
         )
+        
         guardar_evento_db(int(interaction.guild.id), int(self.view.message_id), evento)
 
 class BotonDesuscribir(discord.ui.Button):
@@ -561,6 +585,7 @@ class BotonConfig(discord.ui.Button):
         view.add_item(ConfiguracionSelect(interaction.user.id, self.message_id))
 
         await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
+
 
 
 class EventoView(discord.ui.View):
@@ -710,6 +735,7 @@ class ConfirmarUsarPlantillaView(discord.ui.View):
         evento_real["banca"] = []  # 🔥 NUEVO
         evento_real["recordatorio_enviado"] = False
         evento_real["dm_enviado"] = False
+        evento_real["ocultar_fecha_hora"] = False
 
 
         for rol in evento_real.get("roles", {}).values():
@@ -823,6 +849,7 @@ class SeleccionarPlantillaEliminar(discord.ui.Select):
             view=view,
             ephemeral=True
         )
+
 
 #========== comando eliminar plantilla view ==========
 class SeleccionarPlantillaEliminarView(discord.ui.View):
@@ -954,6 +981,8 @@ class ConfirmarGuardarPlantillaView(discord.ui.View):
 
 # --- SELECT PARA CONFIGURACION ---
 class ConfiguracionSelect(discord.ui.Select):
+    
+    
     def __init__(self, user_id, mensaje_id):
         opciones = [
             discord.SelectOption(label="Título", description="Editar el nombre del evento"),
@@ -961,19 +990,112 @@ class ConfiguracionSelect(discord.ui.Select):
             discord.SelectOption(label="Hora", description="Editar la hora del evento"),
             discord.SelectOption(label="Lugar", description="Editar el lugar del evento"),
             discord.SelectOption(label="Descripción", description="Editar la descripción del evento"),
+            discord.SelectOption(label="Ocultar fecha y hora", description="Oculta fecha, hora y relojes de países"),
         ]
         super().__init__(placeholder="Selecciona un campo para editar...", min_values=1, max_values=1, options=opciones)
         self.user_id = user_id
         self.mensaje_id = mensaje_id
 
     async def callback(self, interaction: discord.Interaction):
-        if interaction.user.id != self.user_id:
-            await interaction.response.send_message("❌ Solo el creador puede editar.", ephemeral=True)
-            return
 
         campo = self.values[0]
-        await interaction.response.send_modal(EditarCampoModal(self.user_id, self.mensaje_id, campo))
 
+        evento = eventos.get(self.mensaje_id)
+
+        if not evento:
+            await interaction.response.send_message(
+                "❌ Evento no encontrado.",
+                ephemeral=True
+            )
+            return
+
+        # 🔥 OCULTAR FECHA Y HORA
+        if campo == "Ocultar fecha y hora":
+
+            if evento.get("ocultar_fecha_hora"):
+                await interaction.response.send_message(
+                    "⚠️ Este evento ya tiene la fecha y hora ocultas.",
+                    ephemeral=True
+                )
+                return
+
+            await interaction.response.send_message(
+                "🚨 ESTO ES PERMANENTE 🚨\n\n"
+                "Se ocultará:\n"
+                "• Fecha\n"
+                "• Hora\n"
+                "• Relojes de países\n\n"
+                "❌ Esta acción no se puede deshacer\n\n"
+                "¿Confirmas?",
+                view=ConfirmarOcultarFechaHora(self.user_id, self.mensaje_id),
+                ephemeral=True
+            )
+            return
+
+        # 🔥 AQUÍ SIGUEN LAS DEMÁS OPCIONES DEL MENÚ
+
+        if campo == "Fecha":
+            await interaction.response.send_modal(EditarCampoModal(self.user_id, self.mensaje_id, "Fecha"))
+            return
+
+        if campo == "Hora":
+            await interaction.response.send_modal(EditarCampoModal(self.user_id, self.mensaje_id, "Hora"))
+            return
+
+        if campo == "Lugar":
+            await interaction.response.send_modal(EditarCampoModal(self.user_id, self.mensaje_id, "Lugar"))
+            return
+
+        if campo == "Descripción":
+            await interaction.response.send_modal(EditarCampoModal(self.user_id, self.mensaje_id, "Descripción"))
+            return
+
+        if campo == "Título":
+            await interaction.response.send_modal(EditarCampoModal(self.user_id, self.mensaje_id, "Título"))
+            return
+        # 🔥 fallback por si no coincide nada
+        await interaction.response.send_message(
+            "❌ Opción no reconocida.",
+            ephemeral=True
+        )
+class ConfirmarOcultarFechaHora(discord.ui.View):
+    def __init__(self, user_id, message_id):
+        super().__init__(timeout=30)
+        self.user_id = user_id
+        self.message_id = message_id
+
+    @discord.ui.button(label="Sí, ocultar", style=discord.ButtonStyle.danger)
+    async def confirmar(self, interaction: discord.Interaction, button: discord.ui.Button):
+
+        evento = eventos.get(self.message_id)
+        if not evento:
+            await interaction.response.send_message("❌ Evento no encontrado.", ephemeral=True)
+            return
+
+        if interaction.user.id != self.user_id:
+            await interaction.response.send_message("❌ Solo el creador puede confirmar.", ephemeral=True)
+            return
+
+        evento["ocultar_fecha_hora"] = True
+
+        canal = interaction.channel
+        mensaje = await canal.fetch_message(self.message_id)
+
+        await mensaje.edit(embed=construir_embed(evento))
+
+        guardar_evento_db(interaction.guild.id, self.message_id, evento)
+
+        await interaction.response.edit_message(
+            content="🚫 Fecha, hora y relojes ocultados permanentemente.",
+            view=None
+        )
+
+    @discord.ui.button(label="Cancelar", style=discord.ButtonStyle.secondary)
+    async def cancelar(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.edit_message(
+            content="❌ Cancelado.",
+            view=None
+        )
 # --- MODAL PARA EDITAR CAMPOS ---
 class EditarCampoModal(discord.ui.Modal):
     def __init__(self, user_id, mensaje_id, campo):
@@ -1203,6 +1325,7 @@ async def crear_evento(
         "dm_enviado": False,
         "terminado": False,
         "created_at": datetime.now(timezone.utc),  # 🔥 PEGA AQUÍ
+        "ocultar_fecha_hora": False,
     }
 
     embed = construir_embed(evento_data)
@@ -1366,35 +1489,30 @@ async def gestionar_eventos():
         except:
             continue
 
-        # si no tiene fecha u hora
-        if evento["fecha"] == "Pendiente" or evento["hora"] == "Pendiente":
-            continue
 
         dt_evento = obtener_datetime_evento(evento)
-        if dt_evento is None:
-            continue
         # 🔥 EVENTOS INCOMPLETOS (Pendiente: fecha o hora)
+# 🔥 EVENTOS INCOMPLETOS (Pendiente: fecha o hora)
         if evento.get("fecha") == "Pendiente" or evento.get("hora") == "Pendiente":
 
             creado = evento.get("created_at")
 
-            if creado:
-                if (ahora - creado).total_seconds() >= 86400:  # 24 horas
+            if isinstance(creado, str):
+                creado = datetime.fromisoformat(creado)
 
-                    evento["cerrado"] = True
+            if creado and (ahora - creado).total_seconds() >= 86400:  # 24 horas
 
-                    try:
-                        await mensaje.edit(embed=construir_embed(evento), view=None)
-                    except:
-                        pass
+                evento["cerrado"] = True
 
-                    # 🔥 BORRAR DE MONGODB
-                    eliminar_evento_db(evento["guild_id"], message_id)
+                try:
+                    await mensaje.edit(embed=construir_embed(evento), view=None)
+                except:
+                    pass
 
-                    # 🔥 BORRAR DE MEMORIA
-                    eventos.pop(message_id, None)
+                eliminar_evento_db(evento["guild_id"], message_id)
+                eventos.pop(message_id, None)
 
-                    continue
+                continue
 
         minutos_para_evento = (dt_evento - ahora).total_seconds() / 60
         minutos_restantes = int((dt_evento - ahora).total_seconds() // 60)
@@ -1626,8 +1744,6 @@ TOKEN = os.environ.get("TOKEN")
 if not TOKEN:
     raise Exception("❌ Falta la variable de entorno TOKEN")
 
-bot.run(TOKEN)
-
 import atexit
 
 def cerrar_mongo():
@@ -1635,3 +1751,6 @@ def cerrar_mongo():
     print("🔌 Conexión a Mongo cerrada")
 
 atexit.register(cerrar_mongo)
+
+bot.run(TOKEN)
+
