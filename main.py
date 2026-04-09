@@ -1,3 +1,5 @@
+
+
 import discord
 from discord.ext import commands, tasks
 from discord import app_commands
@@ -7,38 +9,139 @@ import json
 import os
 import copy
 
-ARCHIVO_PLANTILLAS = "plantillas.json"
 
-def guardar_plantillas():
-    with open(ARCHIVO_PLANTILLAS, "w", encoding="utf-8") as f:
-        json.dump(plantillas_por_guild, f, indent=4, ensure_ascii=False)
+from pymongo import MongoClient
 
-# Cargar plantillas al iniciar
-if os.path.exists(ARCHIVO_PLANTILLAS):
-    with open(ARCHIVO_PLANTILLAS, "r", encoding="utf-8") as f:
-        data = json.load(f)
-        # Convertir todos los keys de guild a int
-        plantillas_por_guild = {int(k): v for k, v in data.items()}
-else:
-    plantillas_por_guild = {}
+MONGO_URI = os.environ.get("MONGO_URI")
 
-# Función para guardar plantillas
-ARCHIVO_EVENTOS = "eventos.json"
+if not MONGO_URI:
+    raise Exception("❌ MONGO_URI no está configurado en las variables de entorno")
 
-# Cargar eventos guardados
-if os.path.exists(ARCHIVO_EVENTOS):
-    with open(ARCHIVO_EVENTOS, "r", encoding="utf-8") as f:
-        eventos_por_guild = json.load(f)
-        # Convertir keys de guild a str si no lo son
-        eventos_por_guild = {str(k): v for k, v in eventos_por_guild.items()}
-else:
-    eventos_por_guild = {}
+client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
+db = client["discord_bot"]
 
-# Función para guardar eventos
-def guardar_eventos():
-    with open(ARCHIVO_EVENTOS, "w", encoding="utf-8") as f:
-        json.dump(eventos_por_guild, f, indent=4, ensure_ascii=False)
+# 🔥 Estado global de Mongo
+MONGO_ACTIVO = False
 
+# 🔥 Verificar conexión SIN tumbar el bot
+try:
+    client.server_info()
+    print("✅ Conectado a MongoDB Atlas")
+    MONGO_ACTIVO = True
+except Exception as e:
+    print("⚠️ Mongo no disponible, el bot seguirá sin base de datos:", e)
+
+
+# 🔥 Función para verificar estado
+def verificar_mongo():
+    return MONGO_ACTIVO
+
+
+# ==============================
+# COLECCIONES
+# ==============================
+coleccion_plantillas = db["plantillas"]
+coleccion_eventos = db["eventos"]
+
+if verificar_mongo():
+    coleccion_plantillas.create_index(
+        [("guild_id", 1), ("nombre", 1)],
+        unique=True
+    )
+    coleccion_eventos.create_index(
+        [("guild_id", 1), ("message_id", 1)],
+        unique=True
+    )
+
+
+def guardar_plantilla_db(guild_id, nombre, data):
+    if not verificar_mongo():
+        print("⚠️ Mongo no disponible, no se guardó la plantilla")
+        return
+
+    try:
+        coleccion_plantillas.update_one(
+            {"guild_id": guild_id, "nombre": nombre},
+            {"$set": {
+                "guild_id": guild_id,
+                "nombre": nombre,
+                **data
+            }},
+            upsert=True
+        )
+    except Exception as e:
+        print("❌ Error guardando plantilla:", e)
+def obtener_plantillas_db(guild_id):
+    if not verificar_mongo():
+        return {}
+
+    docs = coleccion_plantillas.find({"guild_id": guild_id})
+    resultado = {}
+
+    for doc in docs:
+        doc.pop("_id", None)
+        resultado[doc["nombre"]] = doc
+
+    return resultado
+
+def eliminar_plantilla_db(guild_id, nombre):
+    if not verificar_mongo():
+        print("⚠️ Mongo no disponible, no se eliminó la plantilla")
+        return
+
+    coleccion_plantillas.delete_one({
+        "guild_id": guild_id,
+        "nombre": nombre
+    })
+
+def guardar_evento_db(guild_id, message_id, data):
+    if not verificar_mongo():
+        print("⚠️ Mongo no disponible, no se guardó el evento")
+        return
+
+    try:
+        coleccion_eventos.update_one(
+            {"guild_id": guild_id, "message_id": message_id},
+            {"$set": {
+                "guild_id": guild_id,
+                "message_id": message_id,
+                **data
+            }},
+            upsert=True
+        )
+    except Exception as e:
+        print("❌ Error guardando evento:", e)
+def cargar_eventos_db():
+    eventos = {}
+
+    if not verificar_mongo():
+        print("⚠️ Mongo no disponible, no se cargaron eventos")
+        return eventos
+
+    try:
+        docs = coleccion_eventos.find()
+
+        for doc in docs:
+            if "message_id" not in doc:
+                continue
+
+            message_id = int(doc["message_id"])
+            doc["guild_id"] = int(doc.get("guild_id", 0))
+            eventos[message_id] = doc
+
+    except Exception as e:
+        print("❌ Error cargando eventos:", e)
+
+    return eventos
+def eliminar_evento_db(guild_id, message_id):
+    if not verificar_mongo():
+        print("⚠️ Mongo no disponible, no se eliminó el evento")
+        return
+
+    coleccion_eventos.delete_one({
+        "guild_id": int(guild_id),
+        "message_id": int(message_id),
+    })
 intents = discord.Intents.default()
 intents.members = True
 intents.guilds = True
@@ -47,26 +150,7 @@ intents.message_content = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-# =============================
-# EVENTO: Cuando el bot se une a un servidor
-# =============================
-@bot.event
-async def on_guild_join(guild: discord.Guild):
-    """Cuando el bot se une a un servidor, crea la base de plantillas si no existe."""
-    if guild.id not in plantillas_por_guild:
-        plantillas_por_guild[guild.id] = {
-            "Plantilla de ejemplo": {
-                "fecha": "Pendiente",
-                "hora": "Pendiente",
-                "lugar": "Pendiente",
-                "descripcion": "Descripción de ejemplo / Punto 2",
-                "roles": {},  # Sin roles iniciales
-                "rol": None,
-                "imagen": None
-            }
-        }
-    # Guardar en archivo
-    guardar_plantillas()
+
 
 eventos = {}  # Guardar eventos activos
 
@@ -143,23 +227,16 @@ def evento_finalizado(evento):
     return datetime.now(timezone.utc) >= fin
 
 async def marcar_eventos_finalizados():
-    cambios = False
-    for guild_id, eventos_guild in list(eventos_por_guild.items()):
-        for mensaje_id, evento in list(eventos_guild.items()):
-            if not evento.get("cerrado", False) and evento_finalizado(evento):
-                evento["cerrado"] = True
-                cambios = True
-    if cambios:
-        guardar_eventos()         
+    for evento in eventos.values():
+        if not evento.get("cerrado", False) and evento_finalizado(evento):
+            evento["cerrado"] = True
+            
 
-@tasks.loop(minutes=1)  # Revisa cada 1 minuto
+@tasks.loop(minutes=1)
 async def revisar_eventos():
     await marcar_eventos_finalizados()
 
-@bot.event
-async def on_ready():
-    print(f"Bot listo como {bot.user}")
-    revisar_eventos.start()  # 🔹 Inicia el loop
+
 
 def formatear_horas_multizona(hora_utc_str):
     dt_utc = datetime.strptime(hora_utc_str, "%H:%M")
@@ -283,14 +360,16 @@ def construir_embed(evento):
     max_long = max(len(linea) for linea in horas_lista)  # Encontramos el texto más largo
     for hora in horas_lista:
         columna_2 += f"{hora.rjust(max_long)}\n"  # Rellenamos con espacios a la izquierda para que se alineen
-
+    
     # Añadir ambas columnas en el embed
     embed.add_field(name="\u200b", value=columna_1, inline=True)
     embed.add_field(name="\u200b", value=columna_2, inline=True)
 
     # ============================= DESCRIPCIÓN =============================
+    descripcion = evento.get("descripcion") or ""
+
     descripcion_formateada = "\n".join(
-        f"🔹 {line.strip()}" for line in evento["descripcion"].split("/") if line.strip()
+        f"🔹 {line.strip()}" for line in descripcion.split("/") if line.strip()
     )
 
     embed.add_field(name="\u200b", value=descripcion_formateada, inline=False)
@@ -303,7 +382,7 @@ def construir_embed(evento):
 
     total_campos_base = len(embed.fields)  # los campos que ya tenías antes de roles
 
-    for rol in evento["roles"].values():
+    for rol in evento.get("roles", {}).values():
         usuarios = "\n".join(
             f"{rol['emoji'] + ' ' if rol['emoji'] else ''}<@{u}>"
             for u in rol["usuarios"]
@@ -318,7 +397,7 @@ def construir_embed(evento):
         contador += 1
 
         # Romper fila solo si hay pocos roles **y no superamos 25 campos en total**
-        if contador % 2 == 0 and len(evento["roles"]) <= max_roles_con_fila and (total_campos_base + contador + contador//2) <= 25:
+        if contador % 2 == 0 and len(evento.get("roles", {})) <= max_roles_con_fila and (total_campos_base + contador + contador//2) <= 25:
             embed.add_field(name="\u200b", value="\u200b", inline=True)
 
 # ============================= BANCA =============================
@@ -371,6 +450,8 @@ class BotonRol(discord.ui.Button):
         self.rol_id = rol_id
 
     async def callback(self, interaction: discord.Interaction):
+        if not self.view or not self.view.message_id:
+            return
         evento = eventos.get(self.view.message_id)
         if not evento:
             await interaction.response.send_message("❌ Evento no encontrado.", ephemeral=True)
@@ -381,14 +462,17 @@ class BotonRol(discord.ui.Button):
         if "banca" not in evento:
             evento["banca"] = []
 
-        for r in evento["roles"].values():
+        for r in evento.get("roles", {}).values():
             if user_id in r["usuarios"]:
                 r["usuarios"].remove(user_id)
 
         if user_id in evento["banca"]:
             evento["banca"].remove(user_id)
 
-        rol = evento["roles"][self.rol_id]
+        rol = evento.get("roles", {}).get(self.rol_id)
+        if not rol:
+            await interaction.response.send_message("❌ Rol no válido.", ephemeral=True)
+            return
 
         if len(rol["usuarios"]) >= rol["cupo"]:
 
@@ -404,17 +488,24 @@ class BotonRol(discord.ui.Button):
                 embed=construir_embed(evento),
                 view=self.view
             )
+            guardar_evento_db(int(interaction.guild.id), int(self.view.message_id), evento)
             return
 
-        rol["usuarios"].append(user_id)
+        if user_id not in rol["usuarios"]:
+            rol["usuarios"].append(user_id)
 
-        if not interaction.response.is_done():
+        try:
             await interaction.response.defer()
+        except:
+            pass
 
         await interaction.message.edit(
             embed=construir_embed(evento),
             view=self.view
+
+        
         )
+        guardar_evento_db(int(interaction.guild.id), int(self.view.message_id), evento)
 
 class BotonDesuscribir(discord.ui.Button):
     def __init__(self):
@@ -428,7 +519,7 @@ class BotonDesuscribir(discord.ui.Button):
         evento = eventos[self.view.message_id]
         user_id = interaction.user.id
 
-        for r in evento["roles"].values():
+        for r in evento.get("roles", {}).values():
             if user_id in r["usuarios"]:
                 r["usuarios"].remove(user_id)
 
@@ -437,7 +528,7 @@ class BotonDesuscribir(discord.ui.Button):
 
         await interaction.response.defer()
         await interaction.message.edit(embed=construir_embed(evento), view=self.view)
-
+        guardar_evento_db(int(interaction.guild.id), int(self.view.message_id), evento)
 class BotonConfig(discord.ui.Button):
     def __init__(self, message_id):
         super().__init__(
@@ -477,7 +568,7 @@ class EventoView(discord.ui.View):
         if message_id and message_id in eventos:
             evento = eventos[message_id]
 
-            for rol_id, rol in evento["roles"].items():
+            for rol_id, rol in evento.get("roles", {}).items():
                 self.add_item(BotonRol(rol_id, rol))
 
             self.add_item(BotonDesuscribir())
@@ -496,7 +587,7 @@ class ConfirmarEliminarView(discord.ui.View):
         evento = eventos.get(self.message_id)
 
         if not evento:
-            await interaction.response.edit_message(content=None, view=None)
+            await interaction.response.edit_message(content=" ", view=None)
             return
 
         # Verificar que sea el creador
@@ -515,12 +606,11 @@ class ConfirmarEliminarView(discord.ui.View):
         eventos.pop(self.message_id, None)
 
         # Cierra la ventana ephemeral sin dejar mensaje residual
-        await interaction.response.edit_message(content=None, view=None)
+        await interaction.response.edit_message(content=" ", view=None)
 
-        guild_id_str = str(interaction.guild.id)
-        if guild_id_str in eventos_por_guild:
-            eventos_por_guild[guild_id_str].pop(str(self.message_id), None)
-            guardar_eventos()
+        
+        
+        eliminar_evento_db(interaction.guild.id, self.message_id)
 
     @discord.ui.button(label="No", style=discord.ButtonStyle.secondary)
     async def cancelar(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -530,7 +620,7 @@ class ConfirmarEliminarView(discord.ui.View):
 #========== comando usar plantilas Select==========
 class SeleccionarPlantilla(discord.ui.Select):
     def __init__(self, user_id, guild_id):
-        plantillas_actuales = plantillas_por_guild.get(guild_id, {})
+        plantillas_actuales = obtener_plantillas_db(guild_id)
 
         opciones = [
             discord.SelectOption(label=nombre, description=f"Plantilla: {nombre}")
@@ -555,7 +645,7 @@ class SeleccionarPlantilla(discord.ui.Select):
             return
 
         guild_id = interaction.guild.id if interaction.guild else 0
-        plantillas_actuales = plantillas_por_guild.get(guild_id, {})
+        plantillas_actuales = obtener_plantillas_db(guild_id)
 
         nombre = self.values[0]
         plantilla = plantillas_actuales.get(nombre)
@@ -642,15 +732,7 @@ class ConfirmarUsarPlantillaView(discord.ui.View):
 
         eventos[mensaje_enviado.id] = evento_real
 
-        guild_id_str = str(interaction.guild.id)
-
-        # Crear apartado del guild si no existe
-        if guild_id_str not in eventos_por_guild:
-            eventos_por_guild[guild_id_str] = {}
-
-        # Guardar evento en JSON
-        eventos_por_guild[guild_id_str][str(mensaje_enviado.id)] = evento_real
-        guardar_eventos()
+        guardar_evento_db(interaction.guild.id, mensaje_enviado.id, evento_real)
 
         await mensaje_enviado.edit(view=EventoView(mensaje_enviado.id))
 
@@ -679,7 +761,7 @@ class ConfirmarUsarPlantillaView(discord.ui.View):
 # =============================
 class SeleccionarPlantillaEliminar(discord.ui.Select):
     def __init__(self, user_id, guild_id):
-        plantillas_actuales = plantillas_por_guild.get(guild_id, {})
+        plantillas_actuales = obtener_plantillas_db(guild_id)
 
         opciones = [
             discord.SelectOption(label=nombre, description=f"Plantilla: {nombre}")
@@ -705,7 +787,7 @@ class SeleccionarPlantillaEliminar(discord.ui.Select):
             return
 
         guild_id = self.guild_id
-        plantillas_actuales = plantillas_por_guild.get(guild_id, {})
+        plantillas_actuales = obtener_plantillas_db(guild_id)
 
         nombre = self.values[0]
         plantilla = plantillas_actuales.get(nombre)
@@ -763,9 +845,7 @@ class ConfirmarEliminarPlantillaView(discord.ui.View):
 
         # Eliminar del diccionario
         guild_id = interaction.guild.id if interaction.guild else 0
-        if guild_id in plantillas_por_guild and self.nombre in plantillas_por_guild[guild_id]:
-            plantillas_por_guild[guild_id].pop(self.nombre)
-            guardar_plantillas()
+        eliminar_plantilla_db(guild_id, self.nombre)
 
         await interaction.response.edit_message(
             content=f"✅ Plantilla '{self.nombre}' eliminada.",
@@ -811,19 +891,17 @@ class ConfirmarGuardarPlantillaView(discord.ui.View):
             )
             return
 
-        guild_id = interaction.guild.id  # Aquí reemplazamos por guild real más abajo
+        guild_id = interaction.guild.id if interaction.guild else 0  # Aquí reemplazamos por guild real más abajo
         # 🔹 Obtenemos guild real del interaction
         if hasattr(interaction, "guild") and interaction.guild:
-            guild_id = interaction.guild.id
+            guild_id = interaction.guild.id if interaction.guild else 0
         else:
             guild_id = 0  # fallback
 
         # Crear espacio si no existe
-        if guild_id not in plantillas_por_guild:
-            plantillas_por_guild[guild_id] = {}
+        plantillas_actuales = obtener_plantillas_db(guild_id)
 
-        # 🔥 Límite de 40 plantillas por servidor
-        if len(plantillas_por_guild[guild_id]) >= 40:
+        if len(plantillas_actuales) >= 40:
             await interaction.response.send_message(
                 "❌ Solo puedes guardar un máximo de 40 plantillas por servidor.",
                 ephemeral=True
@@ -831,16 +909,22 @@ class ConfirmarGuardarPlantillaView(discord.ui.View):
             return
 
         # Guardar plantilla
-        plantillas_por_guild[guild_id][self.titulo] = {
-            "fecha": "Pendiente",
-            "hora": "Pendiente",
-            "lugar": "Pendiente",
-            "descripcion": self.descripcion,
-            "roles": self.roles,
-            "rol": self.rol.id if self.rol else None,
-            "imagen": self.imagen
-        }
-        guardar_plantillas()
+        guardar_plantilla_db(
+            guild_id,
+            self.titulo,
+            {
+                "guild_id": guild_id,
+                "nombre": self.titulo,
+                "fecha": "Pendiente",
+                "hora": "Pendiente",
+                "lugar": "Pendiente",
+                "descripcion": self.descripcion,
+                "roles": self.roles,
+                "rol": self.rol.id if self.rol else None,
+                "imagen": self.imagen
+            }
+        )
+        
 
         await interaction.response.edit_message(
             content="✅ Plantilla guardada correctamente.",
@@ -942,15 +1026,9 @@ class EditarCampoModal(discord.ui.Modal):
                     "❌ Formato de hora inválido. Debe ser HH:MM en UTC.",
                     ephemeral=True
                 )
+
                 return
-            try:
-                datetime.strptime(nuevo_valor, "%H:%M")
-                evento["hora"] = nuevo_valor
-            except ValueError:
-                await interaction.response.send_message(
-                    "❌ Formato de hora inválido. Debe ser HH:MM en UTC.", ephemeral=True
-                )
-                return
+           
         elif self.campo == "Lugar":
             evento["lugar"] = nuevo_valor
         elif self.campo == "Descripción":
@@ -962,7 +1040,7 @@ class EditarCampoModal(discord.ui.Modal):
             await mensaje.edit(embed=construir_embed(evento))
         except Exception as e:
             print("Error actualizando evento:", e)
-        guardar_eventos()
+        guardar_evento_db(interaction.guild.id, self.mensaje_id, evento)
         await interaction.response.send_message(f"✅ {self.campo} actualizado correctamente.", ephemeral=True)
 ## ## ## ## ## ## #
 #  Comando /crear_plantilla
@@ -1005,7 +1083,7 @@ async def crear_plantilla(
         "lugar": "Pendiente",
         "descripcion": descripcion,
         "roles": roles_parseados,
-        "rol": rol,
+        "rol": rol.id if rol else None,
         "imagen": imagen,
         "creador": interaction.user.id
     }
@@ -1042,7 +1120,7 @@ async def crear_plantilla(
     hora="Formato HH:MM en UTC (ej: 21:30)",
     lugar="Sitio de reunion",
     descripcion="Separa los puntos con /",
-    roles="EMOJI-NOMBRE(CUPO),separados por coma ejem:🛡️-Tanke(1),⛑️-Healer(2)",
+    roles="EMOJI-NOMBRE-CUPO,separados por coma ejem:🛡️-Tanke-1,⛑️-Healer-2",
     rol="Rol a mencionar (opcional)",
     imagen="URL de imagen (opcional)"
 )
@@ -1069,7 +1147,7 @@ async def crear_evento(
         await interaction.response.send_message("❌ Solo se permiten un máximo de 20 roles.", ephemeral=True)
         return
 
-    # Validar hora
+    # Validar hora y fecha antes de procesar roles para ahorrar recursos
     try:
         datetime.strptime(hora, "%H:%M")
     except ValueError:
@@ -1077,8 +1155,15 @@ async def crear_evento(
             "❌ Formato de hora inválido. Debe ser HH:MM en UTC.", ephemeral=True
         )
         return
-
-  
+    try:
+        datetime.strptime(fecha, "%d-%m-%Y")
+    except ValueError:
+        await interaction.response.send_message(
+            "❌ Formato de fecha inválido. Usa DD-MM-YYYY.",
+            ephemeral=True
+        )
+        return
+    
     # Procesar roles usando la función auxiliar
     try:
         roles_parseados = parsear_roles_string(roles)
@@ -1088,6 +1173,7 @@ async def crear_evento(
 
     # Crear datos del evento
     evento_data = {
+        "guild_id": interaction.guild.id,
         "nombre": nombre,
         "fecha": fecha,
         "hora": hora,
@@ -1129,15 +1215,7 @@ async def crear_evento(
     # Guardar evento y asignar botones
     eventos[mensaje.id] = evento_data
 
-    guild_id_str = str(interaction.guild.id)
-
-    # Crear apartado del guild si no existe
-    if guild_id_str not in eventos_por_guild:
-        eventos_por_guild[guild_id_str] = {}
-
-    # Guardar el evento usando el ID del mensaje como key
-    eventos_por_guild[guild_id_str][str(mensaje.id)] = evento_data
-    guardar_eventos()
+    guardar_evento_db(int(interaction.guild.id), int(mensaje.id), evento_data)
 
     await mensaje.edit(view=EventoView(mensaje.id))
 
@@ -1148,7 +1226,7 @@ async def crear_evento(
 
 async def eliminar_plantilla(interaction: discord.Interaction):
     guild_id = interaction.guild.id if interaction.guild else 0
-    plantillas_actuales = plantillas_por_guild.get(guild_id, {})
+    plantillas_actuales = obtener_plantillas_db(guild_id)
 
     if not interaction.user.guild_permissions.administrator:
         await interaction.response.send_message("❌ Solo administradores pueden usar este comando.", ephemeral=True)
@@ -1185,7 +1263,7 @@ async def enviar_recordatorio(evento, message_id):
     # USUARIOS CONFIRMADOS (ROLES)
    
     usuarios_roles = set()
-    for rol in evento["roles"].values():
+    for rol in evento.get("roles", {}).values():
         usuarios_roles.update(rol["usuarios"])
 
     # =============================
@@ -1231,7 +1309,7 @@ async def enviar_dm_recordatorio(evento):
     usuarios = set()
 
     # Usuarios de roles
-    for rol in evento["roles"].values():
+    for rol in evento.get("roles", {}).values():
         usuarios.update(rol["usuarios"])
 
     # Usuarios en banca
@@ -1269,7 +1347,10 @@ async def gestionar_eventos():
         if not canal:
             continue
 
-        mensaje = canal.get_partial_message(message_id)
+        try:
+            mensaje = canal.get_partial_message(message_id)
+        except:
+            continue
 
         # si no tiene fecha u hora
         if evento["fecha"] == "Pendiente" or evento["hora"] == "Pendiente":
@@ -1300,6 +1381,8 @@ async def gestionar_eventos():
 
         # cerrar evento
         if minutos_para_evento < -90:
+            evento["cerrado"] = True
+            guardar_evento_db(evento.get("guild_id", 0), message_id, evento)
             try:
                 await mensaje.edit(view=None)
             except Exception:
@@ -1309,11 +1392,11 @@ async def gestionar_eventos():
 # COMANDO /HELP VISUAL FORMATEADO
 # =============================
 @bot.tree.command(name="help", description="Muestra las instrucciones de uso del bot de forma visual y clara")
-
 async def help_command(interaction: discord.Interaction):
+
     embed = discord.Embed(
         title="📚 Manual del Bot de Eventos",
-        description="¡Bienvenido! Aquí tienes todas las instrucciones para usar el bot de forma correcta y divertida.\n\n",
+        description="Bienvenido 👋 aquí tienes cómo usar correctamente el bot.\n\n",
         color=discord.Color.teal()
     )
 
@@ -1321,60 +1404,100 @@ async def help_command(interaction: discord.Interaction):
     embed.add_field(
         name="📝 Crear evento",
         value=(
-            "Usa `/evento` con los siguientes parámetros:\n\n"
-            "• **nombre:** Nombre del evento\n"
-            "• **fecha:** Formato `DD-MM-YYYY` (ej. 12-02-2026)\n"
-            "• **hora:** Formato `HH:MM` UTC (ej. 21:30)\n"
-            "• **lugar:** Lugar del evento\n"
-            "• **descripción:** Usa `/` para separar puntos y aparte\n"
-            "• **imagen:** (Opcional) URL de la imagen del evento\n\n"
+            "Usa `/crear_evento`\n\n"
+            "• nombre\n"
+            "• fecha → DD-MM-YYYY\n"
+            "• hora → HH:MM (UTC)\n"
+            "• lugar\n"
+            "• descripcion (usa `/` para separar)\n"
+            "• roles\n"
+            "• rol (opcional)\n"
+            "• imagen (opcional)"
         ),
         inline=False
     )
 
-    # -------------------- USO DE ROLES --------------------
+    # -------------------- ROLES --------------------
     embed.add_field(
-        name="🎯 Uso de los roles",
+        name="🎯 Formato de roles",
         value=(
-            "• Cada rol se separa con **coma `,`**\n"
-            "• Solo puedes tener un Maximo de 20 roles diferentes**\n"
-            "• Dentro de cada rol, el **emoji** y el **nombre** se separan con **`-`**\n"
-            "• El **cupo máximo** se indica dentro del paréntesis `()`\n"
-            "• **roles:** Lista separada por `,` con formato `EMOJI-NOMBRE(CUPO)`\n\n"
-            "📌 **Ejemplo de roles:**\n"
-            "`🛡️-Guerrero(10), 🧙-Mago(5)`\n\n"
+            "• Máximo 20 roles\n"
+            "• Separados por coma `,`\n"
+            "• Formato: `EMOJI-NOMBRE-CUPO`\n\n"
+            "Ejemplo:\n"
+            "`🛡️-Tanque-1, 💉-Healer-2, ⚔️-DPS-5`\n"
+            "También sin emoji:\n"
+            "`Tanque-1, Healer-2`"
         ),
         inline=False
     )
 
     # -------------------- BOTONES --------------------
     embed.add_field(
-        name="🔘 Botones del evento",
+        name="🔘 Botones",
         value=(
-            "• Pulsa un botón de rol para unirte a ese rol\n"
-            "• Pulsa ❌Quitar para eliminar tu inscripción de todos los roles\n"
-            "• ⚙️ Solo el creador puede usar este botón para borrar el evento\n"
-            "• Al borrar el evento, todos los botones desaparecen automáticamente\n"
-            "• Los roles muestran el cupo y los usuarios inscritos en tiempo real\n"
+            "• Únete presionando un rol\n"
+            "• Si está lleno → vas a banca\n"
+            "• ❌ Quitar → salir del evento\n"
+            "• ⚙️ Solo el creador puede editar"
+        ),
+        inline=False
+    )
+
+    # -------------------- CONFIG --------------------
+    embed.add_field(
+        name="⚙️ Edición",
+        value=(
+            "Puedes editar:\n"
+            "• Título\n"
+            "• Fecha\n"
+            "• Hora\n"
+            "• Lugar\n"
+            "• Descripción"
+        ),
+        inline=False
+    )
+
+    # -------------------- SISTEMA AUTO --------------------
+    embed.add_field(
+        name="🧠 Automatización",
+        value=(
+            "• Cuenta regresiva automática\n"
+            "• Aviso 20 min antes\n"
+            "• DM 10 min antes\n"
+            "• Banca automática\n"
+            "• Cierre automático"
+        ),
+        inline=False
+    )
+
+    # -------------------- PLANTILLAS --------------------
+    embed.add_field(
+        name="📋 Plantillas",
+        value=(
+            "`/crear_plantilla`\n"
+            "`/usar_plantillas`\n"
+            "`/eliminar_plantilla`\n\n"
+            "Máximo 40 por servidor"
         ),
         inline=False
     )
 
     # -------------------- CONSEJOS --------------------
     embed.add_field(
-        name="💡 Consejos útiles",
+        name="💡 Consejos",
         value=(
-            "• Revisa la fecha y hora en UTC antes de crear el evento\n"
-            "• Usa emojis claros para los roles para que todos los usuarios identifiquen fácilmente\n"
-            "• Mantén la descripción clara usando `/` para puntos y aparte\n"
-            "• Recuerda revisar el cupo de cada rol antes de unirte"
+            "• Usa UTC siempre\n"
+            "• Usa `/` para separar texto\n"
+            "• Usa emojis claros\n"
+            "• Revisa cupos antes de entrar"
         ),
         inline=False
     )
 
-    embed.set_footer(text="👀 Solo tú puedes ver este mensaje | ¡Diviértete creando eventos!")
-    await interaction.response.send_message(embed=embed, ephemeral=True)
+    embed.set_footer(text="👀 Solo tú puedes ver este mensaje")
 
+    await interaction.response.send_message(embed=embed, ephemeral=True)
 # =============================
 # COMANDO /usar_plantillas
 # =============================
@@ -1387,7 +1510,8 @@ async def usar_plantillas(interaction: discord.Interaction):
     
 
     # Verificar si hay plantillas para este servidor
-    if guild_id not in plantillas_por_guild or not plantillas_por_guild[guild_id]:
+    plantillas_actuales = obtener_plantillas_db(guild_id)
+    if not plantillas_actuales:
         await interaction.response.send_message(
             "❌ No hay plantillas guardadas para este servidor.",
             ephemeral=True
@@ -1408,13 +1532,12 @@ async def usar_plantillas(interaction: discord.Interaction):
 # =============================
 @bot.event
 async def on_ready():
+    
     print(f"✅ Bot listo: {bot.user}")
 
     # 🔹 Reconstruir eventos en memoria desde el JSON
     eventos.clear()
-    for guild_id, eventos_guild in eventos_por_guild.items():
-        for msg_id, evento in eventos_guild.items():
-            eventos[int(msg_id)] = evento
+    eventos.update(cargar_eventos_db())
 
     # 🔹 Registrar botones persistentes para que funcionen después de reiniciar el bot
     for msg_id in eventos:
@@ -1430,31 +1553,14 @@ async def on_ready():
     # 🔹 Iniciar loops si no están corriendo
     if not gestionar_eventos.is_running():
         gestionar_eventos.start()
+    if not revisar_eventos.is_running():
+        revisar_eventos.start()    
 
-    if not limpiar_eventos_json.is_running():
-        limpiar_eventos_json.start()
+    
+@bot.event
+async def on_error(event, *args, **kwargs):
+    print(f"❌ Error en evento {event}:", args, kwargs)
 
-@tasks.loop(minutes=5)
-async def limpiar_eventos_json():
-    ahora = datetime.now(timezone.utc)
-    cambios = False
-
-    for guild_id, guild_eventos in list(eventos_por_guild.items()):
-        for msg_id, evento in list(guild_eventos.items()):
-            # 🔹 Marcar como terminado si ya pasó el tiempo
-            if not evento.get("terminado") and evento_finalizado(evento):
-                evento["terminado"] = True
-
-            # 🔹 Solo borrar si terminó hace más de 2 horas
-            if evento.get("terminado"):
-                dt_evento = obtener_datetime_evento(evento)
-                if dt_evento and ahora >= dt_evento + timedelta(hours=3):  
-                    # 1.5 h de duración + 2 h → 3.5 h
-                    guild_eventos.pop(msg_id, None)
-                    cambios = True
-
-    if cambios:
-        guardar_eventos()
 
 @bot.event
 async def on_message_delete(message):
@@ -1462,22 +1568,26 @@ async def on_message_delete(message):
     if message.id in eventos:
         eventos.pop(message.id, None)
 
-        guild_id_str = str(message.guild.id)
+        
 
-        if guild_id_str in eventos_por_guild:
-            eventos_por_guild[guild_id_str].pop(str(message.id), None)
-            guardar_eventos()
+        if message.guild:
+            eliminar_evento_db(message.guild.id, message.id)
 
-        print(f"Evento eliminado automáticamente: {message.id}")
-
-
-
-bot.run(os.environ["TOKEN"])
+        print(f"[DELETE] Intentando eliminar evento {message.id}")
 
 
 
+TOKEN = os.environ.get("TOKEN")
 
+if not TOKEN:
+    raise Exception("❌ Falta la variable de entorno TOKEN")
 
+bot.run(TOKEN)
 
+import atexit
 
+def cerrar_mongo():
+    client.close()
+    print("🔌 Conexión a Mongo cerrada")
 
+atexit.register(cerrar_mongo)
