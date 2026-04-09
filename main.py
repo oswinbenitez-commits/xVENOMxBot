@@ -316,14 +316,17 @@ def construir_embed(evento):
         timestamp = None
         estado = "⌛ Pendiente"
     else:
-        dt = datetime.strptime(
-            f"{evento['fecha']} {evento['hora']}",
-            "%d-%m-%Y %H:%M"
-        )
-        dt = dt.replace(tzinfo=timezone.utc)
-        timestamp = int(dt.timestamp())
-        estado = estado_evento(timestamp)
-
+        try:
+            dt = datetime.strptime(
+                f"{evento['fecha']} {evento['hora']}",
+                "%d-%m-%Y %H:%M"
+            )
+            dt = dt.replace(tzinfo=timezone.utc)
+            timestamp = int(dt.timestamp())
+            estado = estado_evento(timestamp)
+        except ValueError:
+            timestamp = None
+            estado = "❌ Fecha inválida"
 
     if timestamp is None:
         columna_1 = (
@@ -1007,11 +1010,21 @@ class EditarCampoModal(discord.ui.Modal):
         if self.campo == "Título":
             evento["nombre"] = nuevo_valor
         elif self.campo == "Fecha":
-            evento["fecha"] = nuevo_valor
-            evento.pop("ultimo_minuto", None)
-            evento["recordatorio_enviado"] = False
-            evento["dm_enviado"] = False
-        
+            try:
+                datetime.strptime(nuevo_valor, "%d-%m-%Y")
+                evento["fecha"] = nuevo_valor
+
+                evento.pop("ultimo_minuto", None)
+                evento["recordatorio_enviado"] = False
+                evento["dm_enviado"] = False
+
+            except ValueError:
+                await interaction.response.send_message(
+                    "❌ Formato de fecha inválido. Usa DD-MM-YYYY.",
+                    ephemeral=True
+                )
+                return
+                
         elif self.campo == "Hora":
             try:
                 datetime.strptime(nuevo_valor, "%H:%M")
