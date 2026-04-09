@@ -1193,16 +1193,17 @@ async def crear_evento(
         "lugar": lugar,
         "descripcion": descripcion,
         "roles": roles_parseados,
-        "rol": rol.id if rol else None,  # Guardas solo el ID
+        "rol": rol.id if rol else None,
         "canal": interaction.channel_id,
         "creador": interaction.user.id,
         "cerrado": False,
         "imagen": imagen,
-        "banca": [],  
-        "recordatorio_enviado": False,   # 🔥 NUEVO
-        "dm_enviado": False,              # 🔥 NUEVO
-        "terminado": False  # Nuevo campo para marcar cuando el evento finalizó
-}
+        "banca": [],
+        "recordatorio_enviado": False,
+        "dm_enviado": False,
+        "terminado": False,
+        "created_at": datetime.now(timezone.utc),  # 🔥 PEGA AQUÍ
+    }
 
     embed = construir_embed(evento_data)
 
@@ -1372,6 +1373,28 @@ async def gestionar_eventos():
         dt_evento = obtener_datetime_evento(evento)
         if dt_evento is None:
             continue
+        # 🔥 EVENTOS INCOMPLETOS (Pendiente: fecha o hora)
+        if evento.get("fecha") == "Pendiente" or evento.get("hora") == "Pendiente":
+
+            creado = evento.get("created_at")
+
+            if creado:
+                if (ahora - creado).total_seconds() >= 86400:  # 24 horas
+
+                    evento["cerrado"] = True
+
+                    try:
+                        await mensaje.edit(embed=construir_embed(evento), view=None)
+                    except:
+                        pass
+
+                    # 🔥 BORRAR DE MONGODB
+                    eliminar_evento_db(evento["guild_id"], message_id)
+
+                    # 🔥 BORRAR DE MEMORIA
+                    eventos.pop(message_id, None)
+
+                    continue
 
         minutos_para_evento = (dt_evento - ahora).total_seconds() / 60
         minutos_restantes = int((dt_evento - ahora).total_seconds() // 60)
@@ -1395,11 +1418,19 @@ async def gestionar_eventos():
         # cerrar evento
         if minutos_para_evento < -90:
             evento["cerrado"] = True
-            guardar_evento_db(evento.get("guild_id", 0), message_id, evento)
+
             try:
                 await mensaje.edit(view=None)
-            except Exception:
+            except:
                 pass
+
+            # 🔥 BORRAR DE MONGODB
+            eliminar_evento_db(evento["guild_id"], message_id)
+
+            # 🔥 BORRAR DE MEMORIA
+            eventos.pop(message_id, None)
+
+            continue
 
 # =============================
 # COMANDO /HELP VISUAL FORMATEADO
