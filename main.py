@@ -421,7 +421,6 @@ def construir_embed(evento):
 
         contador += 1
 
-        # Romper fila solo si hay pocos roles **y no superamos 25 campos en total**
         if contador % 2 == 0 and len(evento.get("roles", {})) <= max_roles_con_fila and (total_campos_base + contador + contador//2) <= 25:
             embed.add_field(name="\u200b", value="\u200b", inline=True)
 
@@ -434,7 +433,6 @@ def construir_embed(evento):
             inline=False
     )
 
-
     # ============================= IMAGEN =============================
     if evento.get("imagen"):
         embed.set_image(url=evento["imagen"])
@@ -444,7 +442,6 @@ def construir_embed(evento):
         embed.set_footer(text="Evento finalizado • Panel bloqueado")
 
     return embed
-
 
 
 # =============================
@@ -1491,6 +1488,10 @@ async def gestionar_eventos():
 
 
         dt_evento = obtener_datetime_evento(evento)
+        
+        # 🔥 SI NO HAY FECHA VÁLIDA, SALTAR
+        if dt_evento is None:
+            continue
         # 🔥 EVENTOS INCOMPLETOS (Pendiente: fecha o hora)
 # 🔥 EVENTOS INCOMPLETOS (Pendiente: fecha o hora)
         if evento.get("fecha") == "Pendiente" or evento.get("hora") == "Pendiente":
