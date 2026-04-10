@@ -1101,7 +1101,7 @@ class EditarCampoModal(discord.ui.Modal):
         # Diccionario con placeholders específicos
         placeholders = {
             "Título": "Nombre de la actividad",
-            "Fecha": "En UTC Ejem: 03-03-2026",
+            "Fecha": "En UTC ejem: 03-03-2026",
             "Hora": "Hora UTC ejem: 02:00 ",
             "Lugar": "Sitio de reunion",
             "Descripción": (
