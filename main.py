@@ -314,13 +314,12 @@ def construir_embed(evento):
 # ============================= COLUMNAS =============================
     if evento.get("ocultar_fecha_hora"):
 
-        # 🔥 SOLO LUGAR + ROL (NADA MÁS)
+        # 🔥 SOLO LUGAR + ROL
         columna_1 = f"📍 {evento['lugar']}\n"
 
         if evento.get("rol"):
             columna_1 += f"\n<@&{evento['rol']}>"
 
-        # 🔥 UNA SOLA COLUMNA (sin relojes)
         embed.add_field(name="\u200b", value=columna_1.strip(), inline=False)
 
     else:
@@ -373,17 +372,18 @@ def construir_embed(evento):
 
         embed.add_field(name="\u200b", value=columna_1, inline=True)
         embed.add_field(name="\u200b", value=columna_2, inline=True)
-        # ============================= DESCRIPCIÓN =============================
-        descripcion = evento.get("descripcion") or ""
 
-        descripcion_formateada = "\n".join(
-            f"🔹 {line.strip()}" for line in descripcion.split("/") if line.strip()
-        )
 
-        embed.add_field(name="\u200b", value=descripcion_formateada, inline=False)
-        
-        embed.add_field(name="\u200b", value="\n", inline=False)
+    # ============================= DESCRIPCIÓN (SIEMPRE FUERA) =============================
+    descripcion = evento.get("descripcion") or ""
 
+    descripcion_formateada = "\n".join(
+        f"🔹 {line.strip()}" for line in descripcion.split("/") if line.strip()
+    )
+
+    embed.add_field(name="\u200b", value=descripcion_formateada, inline=False)
+
+    embed.add_field(name="\u200b", value="\n", inline=False)
     # ============================= ROLES (2 COLUMNAS) =============================
     contador = 0
     max_roles_con_fila = 14
