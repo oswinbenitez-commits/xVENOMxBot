@@ -1056,7 +1056,22 @@ class ConfirmarOcultarFechaHora(discord.ui.View):
             await interaction.response.send_message("❌ Solo el creador puede confirmar.", ephemeral=True)
             return
 
+        # 🔥 ACTIVAR OCULTAR
         evento["ocultar_fecha_hora"] = True
+
+        # 🔥 SI TENÍA FECHA/HORA → PASAR A PENDIENTE
+        if evento.get("fecha") != "Pendiente" or evento.get("hora") != "Pendiente":
+
+            evento["fecha"] = "Pendiente"
+            evento["hora"] = "Pendiente"
+
+            # 🔥 RESETEAR FLAGS DE TIEMPO
+            evento.pop("ultimo_minuto", None)
+            evento["recordatorio_enviado"] = False
+            evento["dm_enviado"] = False
+
+            # 🔥 OPCIONAL PERO RECOMENDADO: resetear contador de 24h
+            evento["created_at"] = datetime.now(timezone.utc)
 
         canal = interaction.channel
         mensaje = await canal.fetch_message(self.message_id)
@@ -1066,10 +1081,9 @@ class ConfirmarOcultarFechaHora(discord.ui.View):
         guardar_evento_db(interaction.guild.id, self.message_id, evento)
 
         await interaction.response.edit_message(
-            content="🚫 Fecha, hora y relojes ocultados permanentemente.",
+            content="🚫 Fecha y hora ocultadas. Evento marcado como pendiente.",
             view=None
         )
-
     @discord.ui.button(label="Cancelar", style=discord.ButtonStyle.secondary)
     async def cancelar(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.edit_message(
