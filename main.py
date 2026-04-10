@@ -1081,7 +1081,7 @@ class ConfirmarOcultarFechaHora(discord.ui.View):
         guardar_evento_db(interaction.guild.id, self.message_id, evento)
 
         await interaction.response.edit_message(
-            content="🚫 Fecha y hora ocultadas. Evento marcado como pendiente.",
+            content="🚫 Fecha y hora ocultadas.",
             view=None
         )
     @discord.ui.button(label="Cancelar", style=discord.ButtonStyle.secondary)
