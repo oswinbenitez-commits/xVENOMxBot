@@ -311,11 +311,20 @@ def construir_embed(evento):
 
 
 
-    # ============================= COLUMNAS =============================
+# ============================= COLUMNAS =============================
     if evento.get("ocultar_fecha_hora"):
-        timestamp = None
-        estado = "🔒 Información oculta"
+
+        # 🔥 SOLO LUGAR + ROL (NADA MÁS)
+        columna_1 = f"📍 {evento['lugar']}\n"
+
+        if evento.get("rol"):
+            columna_1 += f"\n<@&{evento['rol']}>"
+
+        # 🔥 UNA SOLA COLUMNA (sin relojes)
+        embed.add_field(name="\u200b", value=columna_1.strip(), inline=False)
+
     else:
+        # ================= NORMAL =================
         if evento["fecha"] == "Pendiente" or evento["hora"] == "Pendiente":
             timestamp = None
             estado = "⌛ Pendiente"
@@ -332,41 +341,23 @@ def construir_embed(evento):
                 timestamp = None
                 estado = "❌ Fecha inválida"
 
-    if timestamp is None:
-        columna_1 = (
-            f"🗓 Pendiente\n\n"
-            f"{estado}\n\n"
-            f"📍 {evento['lugar']}\n"
-        )
-    else:
-        if evento.get("ocultar_fecha_hora"):
+        if timestamp is None:
             columna_1 = (
-                f"🗓 🔒 Oculto\n\n"
+                f"🗓 Pendiente\n\n"
                 f"{estado}\n\n"
                 f"📍 {evento['lugar']}\n"
             )
         else:
-            if timestamp is None:
-                columna_1 = (
-                    f"🗓 Pendiente\n\n"
-                    f"{estado}\n\n"
-                    f"📍 {evento['lugar']}\n"
-                )
-            else:
-                columna_1 = (
-                    f"🗓 <t:{timestamp}:D>\n\n"
-                    f"{estado}\n\n"
-                    f"📍 {evento['lugar']}\n"
-                )
+            columna_1 = (
+                f"🗓 <t:{timestamp}:D>\n\n"
+                f"{estado}\n\n"
+                f"📍 {evento['lugar']}\n"
+            )
 
-    if evento.get("rol"):
-        columna_1 += f"\n<@&{evento['rol']}>"
-    
-    columna_2 = ""
-    # Mostrar la hora en varias zonas, con alineación
-    if evento.get("ocultar_fecha_hora"):
-        horas_lista = ["🔒 Oculto"]
-    else:
+        if evento.get("rol"):
+            columna_1 += f"\n<@&{evento['rol']}>"
+
+        # HORAS
         if evento["hora"] == "Pendiente":
             horas_lista = [
                 "⏰   ♾️ -- UTC",
@@ -376,30 +367,22 @@ def construir_embed(evento):
                 "⏰   ♾️ VE",
             ]
         else:
-            horas_multi = formatear_horas_multizona(evento["hora"])
-            horas_lista = horas_multi.split("\n")
-        if evento.get("ocultar_fecha_hora"):
-            embed.set_footer(text="Información sensible oculta permanentemente")
+            horas_lista = formatear_horas_multizona(evento["hora"]).split("\n")
 
-    # Aseguramos que las horas estén alineadas, con espacio a la derecha
-    max_long = max(len(linea) for linea in horas_lista)  # Encontramos el texto más largo
-    for hora in horas_lista:
-        columna_2 += f"{hora.rjust(max_long)}\n"  # Rellenamos con espacios a la izquierda para que se alineen
-    
-    # Añadir ambas columnas en el embed
-    embed.add_field(name="\u200b", value=columna_1, inline=True)
-    embed.add_field(name="\u200b", value=columna_2, inline=True)
+        columna_2 = "\n".join(horas_lista)
 
-    # ============================= DESCRIPCIÓN =============================
-    descripcion = evento.get("descripcion") or ""
+        embed.add_field(name="\u200b", value=columna_1, inline=True)
+        embed.add_field(name="\u200b", value=columna_2, inline=True)
+        # ============================= DESCRIPCIÓN =============================
+        descripcion = evento.get("descripcion") or ""
 
-    descripcion_formateada = "\n".join(
-        f"🔹 {line.strip()}" for line in descripcion.split("/") if line.strip()
-    )
+        descripcion_formateada = "\n".join(
+            f"🔹 {line.strip()}" for line in descripcion.split("/") if line.strip()
+        )
 
-    embed.add_field(name="\u200b", value=descripcion_formateada, inline=False)
-    
-    embed.add_field(name="\u200b", value="\n", inline=False)
+        embed.add_field(name="\u200b", value=descripcion_formateada, inline=False)
+        
+        embed.add_field(name="\u200b", value="\n", inline=False)
 
     # ============================= ROLES (2 COLUMNAS) =============================
     contador = 0
