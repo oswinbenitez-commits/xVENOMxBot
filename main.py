@@ -1492,13 +1492,16 @@ async def eliminar_plantilla(interaction: discord.Interaction):
         ephemeral=True
     )
 
-@bot.tree.command(name="agregar_servidor", description="Agregar un servidor manualmente a la whitelist", guild_only=False)
+@bot.tree.command(name="agregar_servidor", description="Agregar un servidor manualmente a la whitelist")
 async def agregar_servidor(interaction: discord.Interaction, guild_id: str):
 
     # 🔒 Solo tú (admin del bot)
     if interaction.user.id != ADMIN_ID:
         await interaction.response.send_message("❌ No autorizado.", ephemeral=True)
         return
+    # DM OK
+    if interaction.guild is None:
+        print("Ejecutado en DM")
 
     try:
         guild_id = int(guild_id)
@@ -1531,13 +1534,16 @@ async def agregar_servidor(interaction: discord.Interaction, guild_id: str):
         ephemeral=True
     )
 
-@bot.tree.command(name="remover_servidor", description="Eliminar un servidor de la whitelist del bot", guild_only=False)
+@bot.tree.command(name="remover_servidor", description="Eliminar un servidor de la whitelist del bot")
 async def remover_servidor(interaction: discord.Interaction, guild_id: str):
 
     # 🔒 Solo tú (admin del bot)
     if interaction.user.id != ADMIN_ID:
         await interaction.response.send_message("❌ No autorizado.", ephemeral=True)
         return
+    # DM OK
+    if interaction.guild is None:
+        print("Ejecutado en DM")
 
     try:
         guild_id = int(guild_id)
@@ -1556,7 +1562,7 @@ async def remover_servidor(interaction: discord.Interaction, guild_id: str):
         ephemeral=True
     )
 
-@bot.tree.command(name="ver_servidores", description="Muestra todos los servidores aprobados", guild_only=False)
+@bot.tree.command(name="ver_servidores", description="Muestra todos los servidores aprobados")
 async def ver_servidores(interaction: discord.Interaction):
 
     # 🔐 Solo tú
@@ -1565,6 +1571,10 @@ async def ver_servidores(interaction: discord.Interaction):
             "❌ No autorizado.",
             ephemeral=True
         )
+    # DM OK
+    if interaction.guild is None:
+        print("Ejecutado en DM")
+        
 
     docs = list(coleccion_servidores.find())
 
