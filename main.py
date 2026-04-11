@@ -1222,7 +1222,7 @@ class SolicitudAccesoView(discord.ui.View):
         # 👥 admins completos (nombre + id)
         admins = [
             {
-                "name": str(m),
+                "name": m.mention,
                 "id": m.id
             }
             for m in guild.members
@@ -1231,8 +1231,13 @@ class SolicitudAccesoView(discord.ui.View):
 
         # 🙋 usuario que solicitó acceso
         # (lo tomamos del interaction message embed si quieres tracking real)
-        solicitante = interaction.user
+        last_request = coleccion_servidores.find_one({"guild_id": guild.id}).get("last_request", {})
 
+        solicitante = {
+            "name": last_request.get("name", "Desconocido"),
+            "id": last_request.get("user_id", None),
+            "mention": last_request.get("mention", "N/A")
+        }
         coleccion_servidores.update_one(
             {"guild_id": guild.id},
             {"$set": {
@@ -1473,10 +1478,26 @@ async def solicitar_acceso(interaction: discord.Interaction):
 
     guild = interaction.guild
 
+    # 👥 admins con mención real
     admins = [
-        m.name for m in guild.members
+        m.mention
+        for m in guild.members
         if m.guild_permissions.administrator
     ]
+
+    # 💾 guardar solicitud ANTES de enviar embed (o puedes moverlo al aprobar)
+    coleccion_servidores.update_one(
+        {"guild_id": guild.id},
+        {"$set": {
+            "last_request": {
+                "user_id": interaction.user.id,
+                "name": interaction.user.name,
+                "mention": interaction.user.mention,
+                "requested_at": datetime.now(timezone.utc)
+            }
+        }},
+        upsert=True
+    )
 
     embed = discord.Embed(
         title=f"🏷 {guild.name}",
@@ -1489,7 +1510,7 @@ async def solicitar_acceso(interaction: discord.Interaction):
     embed.add_field(name="👑 Dueño", value=str(guild.owner), inline=False)
     embed.add_field(name="🆔 ID", value=str(guild.id), inline=False)
     embed.add_field(name="👥 Admins", value="\n".join(admins[:10]) or "Ninguno", inline=False)
-    embed.add_field(name="🙋 Solicitante", value=str(interaction.user), inline=False)
+    embed.add_field(name="🙋 Solicitante", value=interaction.user.mention, inline=False)
 
     view = SolicitudAccesoView(guild)
 
