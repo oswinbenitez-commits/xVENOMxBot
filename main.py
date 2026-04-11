@@ -1219,28 +1219,24 @@ class SolicitudAccesoView(discord.ui.View):
 
         guild = self.guild
 
-        # 👥 admins completos (nombre + id)
+        # 👥 admins completos (mención real)
         admins = [
             {
-                "name": m.mention,
-                "id": m.id
+                "id": m.id,
+                "mention": m.mention,
+                "name": str(m)
             }
             for m in guild.members
             if m.guild_permissions.administrator
         ][:10]
 
-        # 🙋 usuario que solicitó acceso
-        # (lo tomamos del interaction message embed si quieres tracking real)
-        last_request = coleccion_servidores.find_one({"guild_id": guild.id}).get("last_request", {})
+        # 🙋 SOLICITANTE REAL (NO owner, NO admin del servidor)
+        solicitante = interaction.user
 
-        solicitante = {
-            "name": last_request.get("name", "Desconocido"),
-            "id": last_request.get("user_id", None),
-            "mention": last_request.get("mention", "N/A")
-        }
         coleccion_servidores.update_one(
             {"guild_id": guild.id},
             {"$set": {
+
                 # 🏷 servidor
                 "guild_id": guild.id,
                 "name": guild.name,
@@ -1248,31 +1244,40 @@ class SolicitudAccesoView(discord.ui.View):
 
                 # 👑 owner
                 "owner": {
-                    "name": str(guild.owner),
-                    "id": guild.owner.id if guild.owner else None
+                    "id": guild.owner.id if guild.owner else None,
+                    "mention": guild.owner.mention if guild.owner else None,
+                    "name": str(guild.owner)
                 },
 
                 # 👥 admins
                 "admins": admins,
 
-                # 🙋 solicitante
+                # 🙋 solicitante REAL
                 "solicitante": {
-                    "name": str(solicitante),
-                    "id": solicitante.id
+                    "id": solicitante.id,
+                    "mention": solicitante.mention,
+                    "name": str(solicitante)
                 },
 
-                # ⏱ metadata
+                # ⏱ metadata opcional
                 "approved_at": datetime.now(timezone.utc)
             }},
             upsert=True
         )
 
         try:
-            await guild.owner.send("✅ Servidor aprobado.")
+            await guild.owner.send("👋 Bienvenido a xVENOMx Bot\n\n"
+                "Este bot está diseñado para gestionar eventos y organizar actividades de forma eficiente.\n\n"
+                "🔒 Actualmente este servidor no tiene acceso habilitado.\n\n"
+                "📩 Para solicitar acceso usa el comando:\n"
+                "/solicitar_acceso")
         except:
             pass
 
-        await interaction.response.send_message("✅ Guardado en MongoDB correctamente", ephemeral=True)
+        await interaction.response.send_message(
+            f"✅ El servidor '{guild.name}' ha sido autorizado correctamente",
+            ephemeral=True
+        )
 
     @discord.ui.button(label="❌ Rechazar", style=discord.ButtonStyle.danger)
     async def rechazar(self, interaction, button):
@@ -2062,7 +2067,10 @@ async def on_guild_join(guild):
     if canal:
         await canal.send(
             "👋 Bienvenido a xVENOMx Bot\n\n"
-            "🔒 Usa /solicitar_acceso para activar el bot."
+            "Este bot está diseñado para gestionar eventos y organizar actividades de forma eficiente.\n\n"
+            "🔒 Actualmente este servidor no tiene acceso habilitado.\n\n"
+            "📩 Para solicitar acceso usa el comando:\n"
+            "/solicitar_acceso"
         )
 
     try:
