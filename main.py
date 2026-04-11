@@ -13,7 +13,7 @@ import copy
 from pymongo import MongoClient
 
 MONGO_URI = os.environ.get("MONGO_URI")
-
+ADMIN_ID = int(os.environ.get("ADMIN_ID", "0"))
 if not MONGO_URI:
     raise Exception("❌ MONGO_URI no está configurado en las variables de entorno")
 
@@ -42,6 +42,7 @@ def verificar_mongo():
 # ==============================
 coleccion_plantillas = db["plantillas"]
 coleccion_eventos = db["eventos"]
+coleccion_servidores = db["servidores"]
 
 if verificar_mongo():
     coleccion_plantillas.create_index(
@@ -142,6 +143,35 @@ def eliminar_evento_db(guild_id, message_id):
         "guild_id": int(guild_id),
         "message_id": int(message_id),
     })
+def servidor_autorizado(guild_id: int) -> bool:
+    if not verificar_mongo():
+        return False
+
+    return coleccion_servidores.find_one({"guild_id": guild_id}) is not None
+def requiere_acceso():
+    async def predicate(interaction: discord.Interaction):
+
+        if not interaction.guild:
+            await interaction.response.send_message(
+                "❌ Este comando solo funciona en servidores.",
+                ephemeral=True
+            )
+            return False
+        if interaction.user.id == ADMIN_ID:
+            return True
+
+        if servidor_autorizado(interaction.guild.id):
+            return True
+
+        await interaction.response.send_message(
+            "🔒 Este servidor no tiene acceso.\n\n📩 Usa /solicitar_acceso",
+            ephemeral=True
+        )
+        return False
+
+    return app_commands.check(predicate)
+
+
 intents = discord.Intents.default()
 intents.members = True
 intents.guilds = True
@@ -508,8 +538,6 @@ class BotonRol(discord.ui.Button):
         await interaction.message.edit(
             embed=construir_embed(evento),
             view=self.view
-
-        
         )
         
         guardar_evento_db(int(interaction.guild.id), int(self.view.message_id), evento)
@@ -1171,11 +1199,55 @@ class EditarCampoModal(discord.ui.Modal):
             print("Error actualizando evento:", e)
         guardar_evento_db(interaction.guild.id, self.mensaje_id, evento)
         await interaction.response.send_message(f"✅ {self.campo} actualizado correctamente.", ephemeral=True)
+
+
+class SolicitudAccesoView(discord.ui.View):
+    def __init__(self, guild):
+        super().__init__()
+        self.guild = guild
+
+    @discord.ui.button(label="✅ Aprobar", style=discord.ButtonStyle.success)
+    async def aprobar(self, interaction, button):
+
+        if interaction.user.id != ADMIN_ID:
+            return await interaction.response.send_message("❌ No autorizado", ephemeral=True)
+
+        coleccion_servidores.update_one(
+            {"guild_id": self.guild.id},
+            {"$set": {
+                "guild_id": self.guild.id,
+                "name": self.guild.name,
+                "owner": self.guild.owner.id,
+                "icon": str(self.guild.icon.url) if self.guild.icon else None,
+                "approved_at": datetime.now(timezone.utc)
+            }},
+            upsert=True
+        )
+
+        try:
+            await self.guild.owner.send("✅ Servidor aprobado.")
+        except:
+            pass
+
+        await interaction.response.send_message("✅ OK", ephemeral=True)
+
+    @discord.ui.button(label="❌ Rechazar", style=discord.ButtonStyle.danger)
+    async def rechazar(self, interaction, button):
+
+        if interaction.user.id != ADMIN_ID:
+            return await interaction.response.send_message("❌ No autorizado", ephemeral=True)
+
+        try:
+            await self.guild.owner.send("❌ Rechazado.")
+        except:
+            pass
+
+        await interaction.response.send_message("❌ Hecho", ephemeral=True)
 ## ## ## ## ## ## #
 #  Comando /crear_plantilla
 # ## ## ## ## ## #
 @bot.tree.command(name="crear_plantilla", description="Crea una plantilla de evento sin modal")
-
+@requiere_acceso()
 async def crear_plantilla(
     interaction: discord.Interaction,
     titulo: str,
@@ -1242,7 +1314,7 @@ async def crear_plantilla(
 # COMANDO /crear_evento
 # =============================
 @bot.tree.command(name="crear_evento", description="Crear un evento")
-
+@requiere_acceso()
 @app_commands.describe(
     nombre="Nombre del evento",
     fecha="Formato DD-MM-YYYY en UTC (ej: 12-03-2026)",
@@ -1349,12 +1421,53 @@ async def crear_evento(
     guardar_evento_db(int(interaction.guild.id), int(mensaje.id), evento_data)
 
     await mensaje.edit(view=EventoView(mensaje.id))
+    
+
+
+@bot.tree.command(name="solicitar_acceso")
+async def solicitar_acceso(interaction: discord.Interaction):
+
+    if not interaction.guild:
+        return await interaction.response.send_message(
+            "❌ Solo en servidores.",
+            ephemeral=True
+        )
+
+    guild = interaction.guild
+
+    admins = [
+        m.name for m in guild.members
+        if m.guild_permissions.administrator
+    ]
+
+    embed = discord.Embed(
+        title=f"🏷 {guild.name}",
+        description="Solicitud de acceso al bot",
+        color=discord.Color.gold()
+    )
+
+    embed.set_thumbnail(url=guild.icon.url if guild.icon else None)
+
+    embed.add_field(name="👑 Dueño", value=str(guild.owner), inline=False)
+    embed.add_field(name="🆔 ID", value=str(guild.id), inline=False)
+    embed.add_field(name="👥 Admins", value="\n".join(admins[:10]) or "Ninguno", inline=False)
+    embed.add_field(name="🙋 Solicitante", value=str(interaction.user), inline=False)
+
+    view = SolicitudAccesoView(guild)
+
+    owner = await bot.fetch_user(ADMIN_ID)
+    await owner.send(embed=embed, view=view)
+
+    await interaction.response.send_message(
+        "📩 Solicitud enviada.",
+        ephemeral=True
+    )
 
 # =============================
 # COMANDO ELIMINAR PLANTILLA
 # =============================
 @bot.tree.command(name="eliminar_plantilla", description="Eliminar una plantilla guardada")
-
+@requiere_acceso()
 async def eliminar_plantilla(interaction: discord.Interaction):
     guild_id = interaction.guild.id if interaction.guild else 0
     plantillas_actuales = obtener_plantillas_db(guild_id)
@@ -1552,6 +1665,7 @@ async def gestionar_eventos():
 # COMANDO /HELP VISUAL FORMATEADO
 # =============================
 @bot.tree.command(name="help", description="Muestra las instrucciones de uso del bot de forma visual y clara")
+@requiere_acceso()
 async def help_command(interaction: discord.Interaction):
 
     embed = discord.Embed(
@@ -1662,7 +1776,7 @@ async def help_command(interaction: discord.Interaction):
 # COMANDO /usar_plantillas
 # =============================
 @bot.tree.command(name="usar_plantillas", description="Selecciona una plantilla de evento para usarla")
-
+@requiere_acceso()
 async def usar_plantillas(interaction: discord.Interaction):
     # Obtenemos el guild ID
     guild_id = interaction.guild.id if interaction.guild else 0
@@ -1692,13 +1806,15 @@ async def usar_plantillas(interaction: discord.Interaction):
 # =============================
 @bot.event
 async def on_ready():
+
+
     
     print(f"✅ Bot listo: {bot.user}")
 
     # 🔹 Reconstruir eventos en memoria desde el JSON
     eventos.clear()
     eventos.update(cargar_eventos_db())
-
+    
     # 🔹 Registrar botones persistentes para que funcionen después de reiniciar el bot
     for msg_id in eventos:
         bot.add_view(EventoView(int(msg_id)))
@@ -1716,7 +1832,24 @@ async def on_ready():
     if not revisar_eventos.is_running():
         revisar_eventos.start()    
 
-    
+@bot.event
+async def on_guild_join(guild):
+
+    canal = discord.utils.get(guild.text_channels)
+
+    if canal:
+        await canal.send(
+            "👋 Bienvenido a xVENOMx Bot\n\n"
+            "🔒 Usa /solicitar_acceso para activar el bot."
+        )
+
+    try:
+        await guild.owner.send(
+            "🔒 Tu servidor requiere aprobación para usar el bot."
+        )
+    except:
+        pass
+
 @bot.event
 async def on_error(event, *args, **kwargs):
     print(f"❌ Error en evento {event}:", args, kwargs)
