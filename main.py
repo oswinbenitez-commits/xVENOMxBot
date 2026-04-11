@@ -1210,6 +1210,9 @@ class SolicitudAccesoView(discord.ui.View):
     def __init__(self, guild):
         super().__init__()
         self.guild = guild
+        async def desactivar_botones(self):
+            for item in self.children:
+                item.disabled = True
 
     @discord.ui.button(label="✅ Aprobar", style=discord.ButtonStyle.success)
     async def aprobar(self, interaction, button):
@@ -1269,6 +1272,8 @@ class SolicitudAccesoView(discord.ui.View):
             f"✅ El servidor '{guild.name}' ha sido autorizado correctamente",
             ephemeral=True
         )
+        await self.desactivar_botones()
+        await interaction.message.edit(view=self)
 
     @discord.ui.button(label="❌ Rechazar", style=discord.ButtonStyle.danger)
     async def rechazar(self, interaction, button):
@@ -1282,6 +1287,9 @@ class SolicitudAccesoView(discord.ui.View):
             pass
 
         await interaction.response.send_message("❌ Hecho", ephemeral=True)
+        await self.desactivar_botones()
+        await interaction.message.edit(view=self)
+        
 ## ## ## ## ## ## #
 #  Comando /crear_plantilla
 # ## ## ## ## ## #
