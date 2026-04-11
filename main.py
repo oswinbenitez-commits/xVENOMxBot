@@ -1503,6 +1503,21 @@ async def solicitar_acceso(interaction: discord.Interaction):
 
     guild = interaction.guild
 
+    # =========================
+    # 🔒 VALIDAR SI YA ESTÁ APROBADO
+    # =========================
+    doc = coleccion_servidores.find_one({"guild_id": guild.id})
+
+    if doc and doc.get("approved_at"):
+        return await interaction.response.send_message(
+            "✅ **Acceso ya habilitado**\n\n"
+            "Este servidor ya ha sido aprobado previamente y cuenta con acceso completo a xVENOMx Bot.\n\n"
+            "🚀 Todas las funciones están disponibles.\n"
+            "Usa `/help` para comenzar.\n\n"
+            "💡 Si necesitas ayuda adicional, puedes contactar al desarrollador.",
+            ephemeral=True
+        )
+
     # 👥 admins con mención real
     admins = [
         m.mention
@@ -1510,7 +1525,7 @@ async def solicitar_acceso(interaction: discord.Interaction):
         if m.guild_permissions.administrator
     ]
 
-    # 💾 guardar solicitud ANTES de enviar embed (o puedes moverlo al aprobar)
+    # 💾 guardar solicitud
     coleccion_servidores.update_one(
         {"guild_id": guild.id},
         {"$set": {
