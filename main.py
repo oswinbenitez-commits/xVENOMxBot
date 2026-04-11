@@ -2210,21 +2210,7 @@ async def on_guild_join(guild):
             "/solicitar_acceso"
         )
 
-    @bot.event
-async def on_guild_join(guild):
-
-    canal = discord.utils.get(guild.text_channels)
-
-    if canal:
-        await canal.send(
-            "👋 Bienvenido a xVENOMx Bot\n\n"
-            "Este bot está diseñado para gestionar eventos y organizar actividades de forma eficiente.\n\n"
-            "🔒 Actualmente este servidor no tiene acceso habilitado.\n"
-            "📩 Para solicitar acceso usa el comando:\n\n"
-            "/solicitar_acceso"
-        )
-
-    # 🔥 Enviar DM al usuario que invitó el bot
+    # 🔥 Detectar quién invitó el bot
     try:
         inviter = None
 
@@ -2234,46 +2220,30 @@ async def on_guild_join(guild):
 
         if inviter:
             import asyncio
-            await asyncio.sleep(3)  # ⏳ pequeño delay
+            await asyncio.sleep(3)
 
-            await inviter.send(
-                f"👋 **¡Bienvenido a xVENOMx Bot!**\n\n"
-                "🤖 Lleva la gestión de eventos de tu servidor al siguiente nivel con herramientas diseñadas para organización eficiente y automatizada.\n\n"
-                
-                "🔒 **Acceso exclusivo**\n"
-                "Este bot funciona bajo un sistema de aprobación para garantizar calidad y buen uso.\n\n"
-                
-                "📩 **Solicita tu acceso**\n"
-                "Usa el comando:\n"
-                "`/solicitar_acceso`\n"
-                "en el servidor que deseas activar.\n\n"
-                
-                "⏳ **Revisión de solicitud**\n"
-                "Nuestro equipo revisará tu solicitud lo antes posible."
+            mensaje_dm = (
+                f"👋 Gracias por invitar el bot a **{guild.name}**\n\n"
+                "🔒 Tu servidor requiere aprobación para usar el bot.\n"
+                "📩 Usa /solicitar_acceso para continuar."
             )
+
+            try:
+                # ✅ Intentar enviar DM
+                await inviter.send(mensaje_dm)
+
+            except:
+                # ❌ Si falla el DM → fallback al canal
+                if canal:
+                    await canal.send(
+                        f"{inviter.mention}\n\n"
+                        "🔒 No pude enviarte DM.\n"
+                        "Para activar el bot usa:\n"
+                        "`/solicitar_acceso`"
+                    )
 
     except Exception as e:
         print("Error obteniendo invitador:", e)
-
-@bot.event
-async def on_error(event, *args, **kwargs):
-    print(f"❌ Error en evento {event}:", args, kwargs)
-
-
-@bot.event
-async def on_message_delete(message):
-
-    if message.id in eventos:
-        eventos.pop(message.id, None)
-
-        
-
-        if message.guild:
-            eliminar_evento_db(message.guild.id, message.id)
-
-        print(f"[DELETE] Intentando eliminar evento {message.id}")
-
-
 
 TOKEN = os.environ.get("TOKEN")
 
