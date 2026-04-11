@@ -1212,18 +1212,24 @@ class SolicitudAccesoView(discord.ui.View):
         self.guild = guild
 
     async def desactivar_botones(self):
-            for item in self.children:
-                item.disabled = True    
+        for item in self.children:
+            item.disabled = True
 
+    # =========================
+    # ✅ APROBAR
+    # =========================
     @discord.ui.button(label="✅ Aprobar", style=discord.ButtonStyle.success)
     async def aprobar(self, interaction, button):
 
         if interaction.user.id != ADMIN_ID:
-            return await interaction.response.send_message("❌ No autorizado", ephemeral=True)
+            return await interaction.response.send_message(
+                "❌ No autorizado",
+                ephemeral=True
+            )
 
         guild = self.guild
 
-        # 👥 admins completos (mención real)
+        # 👥 admins completos
         admins = [
             {
                 "id": m.id,
@@ -1234,9 +1240,16 @@ class SolicitudAccesoView(discord.ui.View):
             if m.guild_permissions.administrator
         ][:10]
 
-        # 🙋 SOLICITANTE REAL (NO owner, NO admin del servidor)
-        solicitante = interaction.user
+        # 📦 traer solicitud REAL desde MongoDB
+        doc = coleccion_servidores.find_one({"guild_id": guild.id}) or {}
 
+        last_request = doc.get("last_request", {})
+
+        solicitante_id = last_request.get("user_id")
+        solicitante_mention = last_request.get("mention")
+        solicitante_name = last_request.get("name")
+
+        # 💾 guardar en MongoDB
         coleccion_servidores.update_one(
             {"guild_id": guild.id},
             {"$set": {
@@ -1258,12 +1271,12 @@ class SolicitudAccesoView(discord.ui.View):
 
                 # 🙋 solicitante REAL
                 "solicitante": {
-                    "id": solicitante.id,
-                    "mention": solicitante.mention,
-                    "name": str(solicitante)
+                    "id": solicitante_id,
+                    "mention": solicitante_mention,
+                    "name": solicitante_name
                 },
 
-                # ⏱ metadata opcional
+                # ⏱ metadata
                 "approved_at": datetime.now(timezone.utc)
             }},
             upsert=True
@@ -1273,21 +1286,32 @@ class SolicitudAccesoView(discord.ui.View):
             f"✅ El servidor '{guild.name}' ha sido autorizado correctamente",
             ephemeral=True
         )
+
         await self.desactivar_botones()
         await interaction.message.edit(view=self)
 
+    # =========================
+    # ❌ RECHAZAR
+    # =========================
     @discord.ui.button(label="❌ Rechazar", style=discord.ButtonStyle.danger)
     async def rechazar(self, interaction, button):
 
         if interaction.user.id != ADMIN_ID:
-            return await interaction.response.send_message("❌ No autorizado", ephemeral=True)
+            return await interaction.response.send_message(
+                "❌ No autorizado",
+                ephemeral=True
+            )
 
         try:
-            await self.guild.owner.send("❌ Rechazado.")
+            await self.guild.owner.send("❌ Tu servidor fue rechazado.")
         except:
             pass
 
-        await interaction.response.send_message("❌ Hecho", ephemeral=True)
+        await interaction.response.send_message(
+            "❌ Servidor rechazado",
+            ephemeral=True
+        )
+
         await self.desactivar_botones()
         await interaction.message.edit(view=self)
 
@@ -1671,9 +1695,8 @@ async def ver_servidores(interaction: discord.Interaction):
             owner_name = owner.get("name", "Desconocido")
             owner_id = owner.get("id", "N/A")
 
-            solicitante = s.get("solicitante", {})
-            solicitante_name = solicitante.get("name", "Desconocido")
-            solicitante_id = solicitante.get("id", "N/A")
+            last_request = s.get("last_request", {})
+            solicitante_id = last_request.get("user_id", "N/A")
 
             admins = s.get("admins", [])
 
@@ -1692,20 +1715,20 @@ async def ver_servidores(interaction: discord.Interaction):
             # 👑 Owner completo
             embed.add_field(
                 name="👑 Dueño",
-                value=f"{owner_name}\n`{owner_id}`",
+                value=f"<@{owner_id}>",
                 inline=True
             )
 
             # 🙋 Solicitante completo
             embed.add_field(
                 name="🙋 Solicitante",
-                value=f"{solicitante_name}\n`{solicitante_id}`",
+                value=f"<@{solicitante_id}>",
                 inline=True
             )
 
             # 👥 Admins (mencionables)
             admins_txt = "\n".join(
-                f"{a.get('name','?')} (`{a.get('id','?')}`)"
+                f"<@{a.get('id','?')}>"
                 for a in admins[:10]
             ) or "Ninguno"
 
