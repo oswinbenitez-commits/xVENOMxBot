@@ -1265,15 +1265,6 @@ class SolicitudAccesoView(discord.ui.View):
             upsert=True
         )
 
-        try:
-            await guild.owner.send("👋 Bienvenido a xVENOMx Bot\n\n"
-                "Este bot está diseñado para gestionar eventos y organizar actividades de forma eficiente.\n\n"
-                "🔒 Actualmente este servidor no tiene acceso habilitado.\n\n"
-                "📩 Para solicitar acceso usa el comando:\n"
-                "/solicitar_acceso")
-        except:
-            pass
-
         await interaction.response.send_message(
             f"✅ El servidor '{guild.name}' ha sido autorizado correctamente",
             ephemeral=True
@@ -1555,7 +1546,9 @@ async def eliminar_plantilla(interaction: discord.Interaction):
         view=view,
         ephemeral=True
     )
-
+# =============================
+# agregar_servidor
+# =============================
 @bot.tree.command(name="agregar_servidor", description="Agregar un servidor manualmente a la whitelist")
 async def agregar_servidor(interaction: discord.Interaction, guild_id: str):
     
@@ -1597,9 +1590,11 @@ async def agregar_servidor(interaction: discord.Interaction, guild_id: str):
         f"✅ Servidor **{guild.name}** agregado y autorizado.",
         ephemeral=True
     )
-
-@bot.tree.command(name="remover_servidor", description="Eliminar un servidor de la whitelist del bot")
-async def remover_servidor(interaction: discord.Interaction, guild_id: str):
+# =============================
+# eliminar_servidor
+# =============================
+@bot.tree.command(name="eliminar_servidor", description="Eliminar un servidor de la whitelist del bot")
+async def eliminar_servidor(interaction: discord.Interaction, guild_id: str):
 
     # 🔒 Solo tú (admin del bot)
     if interaction.user.id != ADMIN_ID:
@@ -1625,7 +1620,9 @@ async def remover_servidor(interaction: discord.Interaction, guild_id: str):
         f"🗑 Servidor `{guild_id}` eliminado correctamente.",
         ephemeral=True
     )
-
+# =============================
+# ver_servidores
+# =============================
 @bot.tree.command(name="ver_servidores", description="Muestra todos los servidores aprobados")
 async def ver_servidores(interaction: discord.Interaction):
 
