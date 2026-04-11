@@ -1492,7 +1492,7 @@ async def eliminar_plantilla(interaction: discord.Interaction):
         ephemeral=True
     )
 
-@bot.tree.command(name="agregar_servidor", description="Agregar un servidor manualmente a la whitelist")
+@bot.tree.command(name="agregar_servidor", description="Agregar un servidor manualmente a la whitelist", guild_only=False)
 async def agregar_servidor(interaction: discord.Interaction, guild_id: str):
 
     # 🔒 Solo tú (admin del bot)
@@ -1531,7 +1531,7 @@ async def agregar_servidor(interaction: discord.Interaction, guild_id: str):
         ephemeral=True
     )
 
-@bot.tree.command(name="remover_servidor", description="Eliminar un servidor de la whitelist del bot")
+@bot.tree.command(name="remover_servidor", description="Eliminar un servidor de la whitelist del bot", guild_only=False)
 async def remover_servidor(interaction: discord.Interaction, guild_id: str):
 
     # 🔒 Solo tú (admin del bot)
@@ -1556,7 +1556,7 @@ async def remover_servidor(interaction: discord.Interaction, guild_id: str):
         ephemeral=True
     )
 
-@bot.tree.command(name="ver_servidores", description="Muestra todos los servidores aprobados")
+@bot.tree.command(name="ver_servidores", description="Muestra todos los servidores aprobados", guild_only=False)
 async def ver_servidores(interaction: discord.Interaction):
 
     # 🔐 Solo tú
