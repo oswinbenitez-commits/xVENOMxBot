@@ -1492,6 +1492,126 @@ async def eliminar_plantilla(interaction: discord.Interaction):
         ephemeral=True
     )
 
+@bot.tree.command(name="agregar_servidor", description="Agregar un servidor manualmente a la whitelist")
+async def agregar_servidor(interaction: discord.Interaction, guild_id: str):
+
+    # 🔒 Solo tú (admin del bot)
+    if interaction.user.id != ADMIN_ID:
+        await interaction.response.send_message("❌ No autorizado.", ephemeral=True)
+        return
+
+    try:
+        guild_id = int(guild_id)
+    except:
+        await interaction.response.send_message("❌ ID inválido.", ephemeral=True)
+        return
+
+    guild = bot.get_guild(guild_id)
+
+    # 🔥 si el bot no está en ese servidor
+    if not guild:
+        await interaction.response.send_message("❌ No estoy en ese servidor.", ephemeral=True)
+        return
+
+    coleccion_servidores.update_one(
+        {"guild_id": guild.id},
+        {"$set": {
+            "guild_id": guild.id,
+            "name": guild.name,
+            "owner": guild.owner.id if guild.owner else None,
+            "icon": str(guild.icon.url) if guild.icon else None,
+            "admins": [m.id for m in guild.members if m.guild_permissions.administrator],
+            "approved_at": datetime.now(timezone.utc)
+        }},
+        upsert=True
+    )
+
+    await interaction.response.send_message(
+        f"✅ Servidor **{guild.name}** agregado y autorizado.",
+        ephemeral=True
+    )
+
+@bot.tree.command(name="remover_servidor", description="Eliminar un servidor de la whitelist del bot")
+async def remover_servidor(interaction: discord.Interaction, guild_id: str):
+
+    # 🔒 Solo tú (admin del bot)
+    if interaction.user.id != ADMIN_ID:
+        await interaction.response.send_message("❌ No autorizado.", ephemeral=True)
+        return
+
+    try:
+        guild_id = int(guild_id)
+    except:
+        await interaction.response.send_message("❌ ID inválido.", ephemeral=True)
+        return
+
+    result = coleccion_servidores.delete_one({"guild_id": guild_id})
+
+    if result.deleted_count == 0:
+        await interaction.response.send_message("⚠️ Ese servidor no estaba registrado.", ephemeral=True)
+        return
+
+    await interaction.response.send_message(
+        f"🗑 Servidor `{guild_id}` eliminado correctamente.",
+        ephemeral=True
+    )
+
+@bot.tree.command(name="ver_servidores", description="Muestra todos los servidores aprobados")
+async def ver_servidores(interaction: discord.Interaction):
+
+    # 🔐 Solo tú
+    if interaction.user.id != ADMIN_ID:
+        return await interaction.response.send_message(
+            "❌ No autorizado.",
+            ephemeral=True
+        )
+
+    docs = list(coleccion_servidores.find())
+
+    if not docs:
+        return await interaction.response.send_message("❌ No hay servidores registrados.")
+
+    # 📦 dividir en bloques de 10
+    chunks = [docs[i:i + 10] for i in range(0, len(docs), 10)]
+    total = len(chunks)
+
+    await interaction.response.defer()
+
+    for idx, chunk in enumerate(chunks, start=1):
+
+        embeds = []
+
+        for s in chunk:
+
+            guild_name = s.get("name", "Sin nombre")
+            guild_id = s.get("guild_id", "N/A")
+            owner = s.get("owner", "Desconocido")
+            icon = s.get("icon")
+
+            admins = s.get("admins", [])
+
+            embed = discord.Embed(
+                title=f"🏷 {guild_name}",
+                color=discord.Color.green()
+            )
+
+            embed.add_field(name="🆔 ID", value=str(guild_id), inline=False)
+            embed.add_field(name="👑 Dueño", value=str(owner), inline=True)
+
+            admins_txt = "\n".join(f"<@{a}>" for a in admins[:10]) or "Ninguno"
+            embed.add_field(name="👥 Admins", value=admins_txt, inline=False)
+
+            embed.add_field(name="🙋 Solicitante", value="Sistema de aprobación", inline=False)
+
+            if icon:
+                embed.set_thumbnail(url=icon)
+
+            embeds.append(embed)
+
+        await interaction.followup.send(
+            content=f"📄 Servidores aprobados ({idx}/{total})",
+            embeds=embeds
+        )
 
 # =============================
 # FUNCION PARA ENVIAR RECORDATORIO 20 MIN ANTES
