@@ -1691,8 +1691,8 @@ async def agregar_servidor(interaction: discord.Interaction, guild_id: str):
                 "user_id": interaction.user.id,
                 "name": interaction.user.name,
                 "mention": interaction.user.mention,
-                "requested_at": datetime.now(timezone.utc)
-            }
+            },
+            "aggregate_at": datetime.now(timezone.utc)
         }},
         upsert=True
     )
