@@ -1624,33 +1624,141 @@ async def agregar_servidor(interaction: discord.Interaction, guild_id: str):
         ephemeral=True
     )
 # =============================
-# eliminar_servidor
+# eliminar_servidor (NUEVO SISTEMA)
 # =============================
+
+class EliminarServidorSelect(discord.ui.Select):
+    def __init__(self, docs):
+
+        options = []
+
+        for s in docs[:25]:  # límite de Discord
+
+            guild_id = str(s.get("guild_id"))
+
+            options.append(
+                discord.SelectOption(
+                    label=s.get("name", "Sin nombre")[:100],
+                    value=guild_id,
+                    description=f"ID: {guild_id}",
+                    emoji="🗑"
+                )
+            )
+
+        super().__init__(
+            placeholder="Selecciona un servidor para eliminar...",
+            min_values=1,
+            max_values=1,
+            options=options
+        )
+
+        self.docs = docs
+
+    async def callback(self, interaction: discord.Interaction):
+
+        guild_id = int(self.values[0])
+
+        server = next(
+            (s for s in self.docs if s.get("guild_id") == guild_id),
+            None
+        )
+
+        if not server:
+            return await interaction.response.send_message(
+                "❌ Servidor no encontrado.",
+                ephemeral=True
+            )
+
+        view = ConfirmarEliminacionView(server)
+
+        icon = server.get("icon")
+
+        embed = discord.Embed(
+            title="⚠️ Confirmación de eliminación",
+            description=f"¿Seguro que quieres eliminar **{server.get('name')}**?",
+            color=discord.Color.red()
+        )
+
+        if icon:
+            embed.set_thumbnail(url=icon)
+
+        embed.add_field(
+            name="🆔 ID del servidor",
+            value=str(server.get("guild_id")),
+            inline=False
+        )
+
+        await interaction.response.send_message(
+            embed=embed,
+            view=view,
+            ephemeral=True
+        )
+
+
+class EliminarServidorView(discord.ui.View):
+    def __init__(self, docs):
+        super().__init__(timeout=60)
+        self.add_item(EliminarServidorSelect(docs))
+
+
+class ConfirmarEliminacionView(discord.ui.View):
+    def __init__(self, server):
+        super().__init__(timeout=60)
+        self.server = server
+
+    @discord.ui.button(label="✅ Confirmar", style=discord.ButtonStyle.success)
+    async def confirmar(self, interaction: discord.Interaction, button: discord.ui.Button):
+
+        guild_id = self.server["guild_id"]
+        name = self.server.get("name", "Desconocido")
+
+        result = coleccion_servidores.delete_one({"guild_id": guild_id})
+
+        if result.deleted_count == 0:
+            return await interaction.response.send_message(
+                "⚠️ Este servidor ya no existía.",
+                ephemeral=True
+            )
+
+        await interaction.response.edit_message(
+            content=f"🗑 El servidor **{name}** ha sido eliminado correctamente.",
+            view=None,
+            embed=None
+        )
+
+    @discord.ui.button(label="❌ Cancelar", style=discord.ButtonStyle.danger)
+    async def cancelar(self, interaction: discord.Interaction, button: discord.ui.Button):
+
+        await interaction.response.edit_message(
+            content="❌ Eliminación cancelada.",
+            view=None,
+            embed=None
+        )
+
+
 @bot.tree.command(name="eliminar_servidor", description="Eliminar un servidor de la whitelist del bot")
-async def eliminar_servidor(interaction: discord.Interaction, guild_id: str):
+async def eliminar_servidor(interaction: discord.Interaction):
 
-    # 🔒 Solo tú (admin del bot)
+    # 🔒 solo admin
     if interaction.user.id != ADMIN_ID:
-        await interaction.response.send_message("❌ No autorizado.", ephemeral=True)
-        return
-    # DM OK
-    if interaction.guild is None:
-        print("Ejecutado en DM")
+        return await interaction.response.send_message(
+            "❌ No autorizado.",
+            ephemeral=True
+        )
 
-    try:
-        guild_id = int(guild_id)
-    except:
-        await interaction.response.send_message("❌ ID inválido.", ephemeral=True)
-        return
+    docs = list(coleccion_servidores.find())
 
-    result = coleccion_servidores.delete_one({"guild_id": guild_id})
+    if not docs:
+        return await interaction.response.send_message(
+            "❌ No hay servidores registrados.",
+            ephemeral=True
+        )
 
-    if result.deleted_count == 0:
-        await interaction.response.send_message("⚠️ Ese servidor no estaba registrado.", ephemeral=True)
-        return
+    view = EliminarServidorView(docs)
 
     await interaction.response.send_message(
-        f"🗑 Servidor `{guild_id}` eliminado correctamente.",
+        "🧾 Selecciona el servidor que quieres eliminar:",
+        view=view,
         ephemeral=True
     )
 # =============================
