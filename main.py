@@ -1212,30 +1212,20 @@ class SolicitudAccesoView(discord.ui.View):
         for item in self.children:
             item.disabled = True
 
-    # =========================
-    # ✅ APROBAR
-    # =========================
+# =========================
+# ✅ APROBAR
+# =========================
     @discord.ui.button(label="✅ Aprobar", style=discord.ButtonStyle.success)
-    async def aprobar(self, interaction, button):
+    async def aprobar(self, interaction: discord.Interaction, button: discord.ui.Button):
 
         if interaction.user.id != ADMIN_ID:
-            return await interaction.response.send_message(
+            await interaction.response.send_message(
                 "❌ No autorizado",
                 ephemeral=True
             )
+            return
 
         guild = self.guild
-
-        # 👥 admins completos
-        admins = [
-            {
-                "id": m.id,
-                "mention": m.mention,
-                "name": str(m)
-            }
-            for m in guild.members
-            if m.guild_permissions.administrator
-        ][:10]
 
         # 📦 traer solicitud REAL desde MongoDB
         doc = coleccion_servidores.find_one({"guild_id": guild.id}) or {}
@@ -1250,23 +1240,14 @@ class SolicitudAccesoView(discord.ui.View):
                 "guild_id": guild.id,
                 "name": guild.name,
                 "icon": str(guild.icon.url) if guild.icon else None,
-                "owner": {
-                    "id": guild.owner.id if guild.owner else None,
-                    "mention": guild.owner.mention if guild.owner else None,
-                    "name": str(guild.owner)
-                },
-                "admins": admins,
-                "solicitante": {
-                    "id": solicitante_id
-                },
                 "approved_at": datetime.now(timezone.utc)
             }},
             upsert=True
         )
 
-        # =========================
-        # 📢 MENSAJE EN EL SERVIDOR
-        # =========================
+# =========================
+# 📢 MENSAJE EN EL SERVIDOR
+# =========================
         try:
             canal = discord.utils.get(guild.text_channels)
 
@@ -1279,36 +1260,35 @@ class SolicitudAccesoView(discord.ui.View):
         except Exception as e:
             print("Error enviando mensaje al canal:", e)
 
-    # =========================
-    # 📩 DM AL SOLICITANTE
-    # =========================
-    if solicitante_id:
-        try:
-            usuario = await bot.fetch_user(solicitante_id)
+# =========================
+# 📩 DM AL SOLICITANTE
+# =========================
+        if solicitante_id:
+            try:
+                usuario = await bot.fetch_user(solicitante_id)
 
-            await usuario.send(
-                "✅ **Solicitud aprobada**\n\n"
-                "🎉 Tu servidor ya tiene acceso completo a xVENOMx Bot\n\n"
-                "🚀 Ya puedes usar todos los comandos disponibles"
-            )
+                await usuario.send(
+                    "✅ **Solicitud aprobada**\n\n"
+                    "🎉 Tu servidor ya tiene acceso completo a xVENOMx Bot\n\n"
+                    "🚀 Ya puedes usar todos los comandos disponibles"
+                )
+            except Exception as e:
+                print("No se pudo enviar DM:", e)
 
-        except Exception as e:
-            print("No se pudo enviar DM al solicitante:", e)
+# =========================
+# RESPUESTA AL ADMIN
+# =========================
+        await interaction.response.send_message(
+            f"✅ El servidor '{guild.name}' ha sido autorizado correctamente",
+            ephemeral=True
+        )
 
-    # =========================
-    # RESPUESTA AL ADMIN
-    # =========================
-    await interaction.response.send_message(
-        f"✅ El servidor '{guild.name}' ha sido autorizado correctamente",
-        ephemeral=True
-    )
+        await self.desactivar_botones()
+        await interaction.message.edit(view=self)
 
-    await self.desactivar_botones()
-    await interaction.message.edit(view=self)
-
-    # =========================
-    # ❌ RECHAZAR
-    # =========================
+# =========================
+# ❌ RECHAZAR
+# =========================
     @discord.ui.button(label="❌ Rechazar", style=discord.ButtonStyle.danger)
     async def rechazar(self, interaction, button):
 
