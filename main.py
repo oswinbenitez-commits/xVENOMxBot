@@ -1210,9 +1210,10 @@ class SolicitudAccesoView(discord.ui.View):
     def __init__(self, guild):
         super().__init__()
         self.guild = guild
-        async def desactivar_botones(self):
+
+    async def desactivar_botones(self):
             for item in self.children:
-                item.disabled = True
+                item.disabled = True    
 
     @discord.ui.button(label="✅ Aprobar", style=discord.ButtonStyle.success)
     async def aprobar(self, interaction, button):
@@ -1289,7 +1290,7 @@ class SolicitudAccesoView(discord.ui.View):
         await interaction.response.send_message("❌ Hecho", ephemeral=True)
         await self.desactivar_botones()
         await interaction.message.edit(view=self)
-        
+
 ## ## ## ## ## ## #
 #  Comando /crear_plantilla
 # ## ## ## ## ## #
