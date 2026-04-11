@@ -1739,7 +1739,6 @@ class ConfirmarEliminacionView(discord.ui.View):
 @bot.tree.command(name="eliminar_servidor", description="Eliminar un servidor de la whitelist del bot")
 async def eliminar_servidor(interaction: discord.Interaction):
 
-    # 🔒 solo admin
     if interaction.user.id != ADMIN_ID:
         return await interaction.response.send_message(
             "❌ No autorizado.",
