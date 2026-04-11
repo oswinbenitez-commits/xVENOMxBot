@@ -35,7 +35,10 @@ except Exception as e:
 # 🔥 Función para verificar estado
 def verificar_mongo():
     return MONGO_ACTIVO
-
+def solo_admin():
+    async def predicate(interaction: discord.Interaction):
+        return interaction.user.id == ADMIN_ID
+    return app_commands.check(predicate)
 
 # ==============================
 # COLECCIONES
@@ -1492,9 +1495,10 @@ async def eliminar_plantilla(interaction: discord.Interaction):
         ephemeral=True
     )
 
-@bot.tree.command(name="agregar_servidor", description="Agregar un servidor manualmente a la whitelist")
+@bot.tree.command(name="agregar_servidor", description="Agregar un servidor manualmente a la whitelist", guild=discord.Object(id=ADMIN_ID))
+@solo_admin()
 async def agregar_servidor(interaction: discord.Interaction, guild_id: str):
-
+    
     # 🔒 Solo tú (admin del bot)
     if interaction.user.id != ADMIN_ID:
         await interaction.response.send_message("❌ No autorizado.", ephemeral=True)
@@ -1534,7 +1538,8 @@ async def agregar_servidor(interaction: discord.Interaction, guild_id: str):
         ephemeral=True
     )
 
-@bot.tree.command(name="remover_servidor", description="Eliminar un servidor de la whitelist del bot")
+@bot.tree.command(name="remover_servidor", description="Eliminar un servidor de la whitelist del bot", guild=discord.Object(id=ADMIN_ID))
+@solo_admin()
 async def remover_servidor(interaction: discord.Interaction, guild_id: str):
 
     # 🔒 Solo tú (admin del bot)
@@ -1562,7 +1567,8 @@ async def remover_servidor(interaction: discord.Interaction, guild_id: str):
         ephemeral=True
     )
 
-@bot.tree.command(name="ver_servidores", description="Muestra todos los servidores aprobados")
+@bot.tree.command(name="ver_servidores", description="Muestra todos los servidores aprobados",  guild=discord.Object(id=ADMIN_ID))
+@solo_admin()
 async def ver_servidores(interaction: discord.Interaction):
 
     # 🔐 Solo tú
@@ -1574,7 +1580,7 @@ async def ver_servidores(interaction: discord.Interaction):
     # DM OK
     if interaction.guild is None:
         print("Ejecutado en DM")
-        
+
 
     docs = list(coleccion_servidores.find())
 
