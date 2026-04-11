@@ -2204,10 +2204,19 @@ async def on_guild_join(guild):
     if canal:
         await canal.send(
             "👋 Bienvenido a xVENOMx Bot\n\n"
-            "Este bot está diseñado para gestionar eventos y organizar actividades de forma eficiente.\n\n"
-            "🔒 Actualmente este servidor no tiene acceso habilitado.\n"
-            "📩 Para solicitar acceso usa el comando:\n\n"
-            "/solicitar_acceso"
+            "🚀 Lleva la organización de tu servidor al siguiente nivel.\n"
+            "Gestiona eventos, coordina actividades y mantén todo bajo control de forma simple y eficiente.\n\n"
+            
+            "━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            
+            "🔒 Acceso restringido\n"
+            "Este servidor aún no tiene el bot activado.\n\n"
+            
+            "📩 ¿Quieres activarlo?\n"
+            "Usa el siguiente comando:\n"
+            "`/solicitar_acceso`\n\n"
+            
+            "━━━━━━━━━━━━━━━━━━━━━━\n\n"
         )
 
     # 🔥 Detectar quién invitó el bot
@@ -2225,7 +2234,7 @@ async def on_guild_join(guild):
             mensaje_dm = (
                 f"👋 Gracias por invitar el bot a **{guild.name}**\n\n"
                 "🔒 Tu servidor requiere aprobación para usar el bot.\n"
-                "📩 Usa /solicitar_acceso para continuar."
+                "📩 Usa /solicitar_acceso en el servidor que quieres activar para continuar."
             )
 
             try:
@@ -2233,14 +2242,8 @@ async def on_guild_join(guild):
                 await inviter.send(mensaje_dm)
 
             except:
-                # ❌ Si falla el DM → fallback al canal
-                if canal:
-                    await canal.send(
-                        f"{inviter.mention}\n\n"
-                        "🔒 No pude enviarte DM.\n"
-                        "Para activar el bot usa:\n"
-                        "`/solicitar_acceso`"
-                    )
+                # ❌ Si falla el DM → NO hacer nada
+                pass
 
     except Exception as e:
         print("Error obteniendo invitador:", e)
