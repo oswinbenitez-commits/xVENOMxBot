@@ -1239,53 +1239,72 @@ class SolicitudAccesoView(discord.ui.View):
 
         # 📦 traer solicitud REAL desde MongoDB
         doc = coleccion_servidores.find_one({"guild_id": guild.id}) or {}
-
         last_request = doc.get("last_request", {})
 
         solicitante_id = last_request.get("user_id")
-        solicitante_mention = last_request.get("mention")
-        solicitante_name = last_request.get("name")
 
         # 💾 guardar en MongoDB
         coleccion_servidores.update_one(
             {"guild_id": guild.id},
             {"$set": {
-
-                # 🏷 servidor
                 "guild_id": guild.id,
                 "name": guild.name,
                 "icon": str(guild.icon.url) if guild.icon else None,
-
-                # 👑 owner
                 "owner": {
                     "id": guild.owner.id if guild.owner else None,
                     "mention": guild.owner.mention if guild.owner else None,
                     "name": str(guild.owner)
                 },
-
-                # 👥 admins
                 "admins": admins,
-
-                # 🙋 solicitante REAL
                 "solicitante": {
-                    "id": solicitante_id,
-                    "mention": solicitante_mention,
-                    "name": solicitante_name
+                    "id": solicitante_id
                 },
-
-                # ⏱ metadata
                 "approved_at": datetime.now(timezone.utc)
             }},
             upsert=True
         )
 
-        await interaction.response.send_message(
-            f"✅ El servidor '{guild.name}' ha sido autorizado correctamente",
-            ephemeral=True
-        )
+        # =========================
+        # 📢 MENSAJE EN EL SERVIDOR
+        # =========================
+        try:
+            canal = discord.utils.get(guild.text_channels)
 
-        await self.desactivar_botones()
-        await interaction.message.edit(view=self)
+            if canal:
+                await canal.send(
+                    "✅ **Este servidor ha sido aprobado correctamente**\n\n"
+                    "🎉 Todas las funciones del bot ya están disponibles\n\n"
+                    "Usa `/help` para comenzar 🚀"
+                )
+        except Exception as e:
+            print("Error enviando mensaje al canal:", e)
+
+    # =========================
+    # 📩 DM AL SOLICITANTE
+    # =========================
+    if solicitante_id:
+        try:
+            usuario = await bot.fetch_user(solicitante_id)
+
+            await usuario.send(
+                "✅ **Solicitud aprobada**\n\n"
+                "🎉 Tu servidor ya tiene acceso completo a xVENOMx Bot\n\n"
+                "🚀 Ya puedes usar todos los comandos disponibles"
+            )
+
+        except Exception as e:
+            print("No se pudo enviar DM al solicitante:", e)
+
+    # =========================
+    # RESPUESTA AL ADMIN
+    # =========================
+    await interaction.response.send_message(
+        f"✅ El servidor '{guild.name}' ha sido autorizado correctamente",
+        ephemeral=True
+    )
+
+    await self.desactivar_botones()
+    await interaction.message.edit(view=self)
 
     # =========================
     # ❌ RECHAZAR
