@@ -1240,6 +1240,29 @@ class SolicitudAccesoView(discord.ui.View):
                 "guild_id": guild.id,
                 "name": guild.name,
                 "icon": str(guild.icon.url) if guild.icon else None,
+
+                # 👑 OWNER BIEN FORMADO
+                "owner": {
+                    "id": guild.owner.id if guild.owner else None,
+                    "name": str(guild.owner) if guild.owner else "Desconocido"
+                },
+
+                # 👥 ADMINS BIEN FORMADOS
+                "admins": [
+                    {
+                        "id": m.id,
+                        "name": str(m)
+                    }
+                    for m in guild.members if m.guild_permissions.administrator
+                ],
+
+                # 🙋 SOLICITUD COMPLETA
+                "last_request": {
+                    "user_id": solicitante_id,
+                    "name": last_request.get("name"),
+                    "mention": last_request.get("mention"),
+                    "requested_at": last_request.get("requested_at")
+                },
                 "approved_at": datetime.now(timezone.utc)
             }},
             upsert=True
@@ -1529,6 +1552,26 @@ async def solicitar_acceso(interaction: discord.Interaction):
     coleccion_servidores.update_one(
         {"guild_id": guild.id},
         {"$set": {
+            "guild_id": guild.id,
+            "name": guild.name,
+            "icon": str(guild.icon.url) if guild.icon else None,
+
+            # 👑 OWNER BIEN FORMADO
+            "owner": {
+                "id": guild.owner.id if guild.owner else None,
+                "name": str(guild.owner) if guild.owner else "Desconocido"
+            },
+
+            # 👥 ADMINS BIEN FORMADOS
+            "admins": [
+                {
+                    "id": m.id,
+                    "name": str(m)
+                }
+                for m in guild.members if m.guild_permissions.administrator
+            ],
+
+            # 🙋 SOLICITUD COMPLETA
             "last_request": {
                 "user_id": interaction.user.id,
                 "name": interaction.user.name,
@@ -1626,10 +1669,30 @@ async def agregar_servidor(interaction: discord.Interaction, guild_id: str):
         {"$set": {
             "guild_id": guild.id,
             "name": guild.name,
-            "owner": guild.owner.id if guild.owner else None,
             "icon": str(guild.icon.url) if guild.icon else None,
-            "admins": [m.id for m in guild.members if m.guild_permissions.administrator],
-            "approved_at": datetime.now(timezone.utc)
+
+            # 👑 OWNER BIEN FORMADO
+            "owner": {
+                "id": guild.owner.id if guild.owner else None,
+                "name": str(guild.owner) if guild.owner else "Desconocido"
+            },
+
+            # 👥 ADMINS BIEN FORMADOS
+            "admins": [
+                {
+                    "id": m.id,
+                    "name": str(m)
+                }
+                for m in guild.members if m.guild_permissions.administrator
+            ],
+
+            # 🙋 SOLICITUD COMPLETA
+            "last_request": {
+                "user_id": interaction.user.id,
+                "name": interaction.user.name,
+                "mention": interaction.user.mention,
+                "requested_at": datetime.now(timezone.utc)
+            }
         }},
         upsert=True
     )
@@ -1849,10 +1912,14 @@ async def ver_servidores(interaction: discord.Interaction):
             )
 
             # 👥 Admins (mencionables)
-            admins_txt = "\n".join(
-                f"<@{a.get('id','?')}>"
-                for a in admins[:10]
-            ) or "Ninguno"
+            admins = s.get("admins", [])
+
+            if admins and isinstance(admins[0], int):
+                admins_txt = "\n".join(f"<@{a}>" for a in admins[:10])
+            else:
+                admins_txt = "\n".join(f"<@{a.get('id','?')}>" for a in admins[:10])
+
+            admins_txt = admins_txt or "Ninguno"
 
             embed.add_field(
                 name="👥 Admins",
