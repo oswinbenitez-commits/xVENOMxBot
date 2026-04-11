@@ -1544,11 +1544,11 @@ async def solicitar_acceso(interaction: discord.Interaction):
     await owner.send(embed=embed, view=view)
 
     await interaction.response.send_message(
-        "📩 **Solicitud enviada correctamente**\n\n"
-        "Tu solicitud de acceso al bot ha sido enviada con éxito.\n"
-        "Por favor, ten paciencia mientras el equipo de desarrolladores revisa tu solicitud.\n\n"
-        "⏳ Recibirás una respuesta una vez que haya sido procesada.\n"
-        "¡Gracias por tu interés!",
+        "✅ **Solicitud enviada correctamente**\n\n"
+        "📩 Tu solicitud ha sido recibida y está en proceso de revisión por parte de nuestro equipo.\n\n"
+        "⏳ Te pedimos un poco de paciencia mientras el desarrollador evalúa tu solicitud.\n"
+        "Recibirás una respuesta en cuanto haya sido procesada.\n\n"
+        "🙏 Gracias por tu interés en xVENOMx Bot.",
         ephemeral=True
     )
 
@@ -2210,6 +2210,20 @@ async def on_guild_join(guild):
             "/solicitar_acceso"
         )
 
+    @bot.event
+async def on_guild_join(guild):
+
+    canal = discord.utils.get(guild.text_channels)
+
+    if canal:
+        await canal.send(
+            "👋 Bienvenido a xVENOMx Bot\n\n"
+            "Este bot está diseñado para gestionar eventos y organizar actividades de forma eficiente.\n\n"
+            "🔒 Actualmente este servidor no tiene acceso habilitado.\n"
+            "📩 Para solicitar acceso usa el comando:\n\n"
+            "/solicitar_acceso"
+        )
+
     # 🔥 Enviar DM al usuario que invitó el bot
     try:
         inviter = None
@@ -2219,8 +2233,11 @@ async def on_guild_join(guild):
             break
 
         if inviter:
+            import asyncio
+            await asyncio.sleep(3)  # ⏳ pequeño delay
+
             await inviter.send(
-                "👋 **¡Bienvenido a xVENOMx Bot!**\n\n"
+                f"👋 **¡Bienvenido a xVENOMx Bot!**\n\n"
                 "🤖 Lleva la gestión de eventos de tu servidor al siguiente nivel con herramientas diseñadas para organización eficiente y automatizada.\n\n"
                 
                 "🔒 **Acceso exclusivo**\n"
