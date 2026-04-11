@@ -1217,24 +1217,57 @@ class SolicitudAccesoView(discord.ui.View):
         if interaction.user.id != ADMIN_ID:
             return await interaction.response.send_message("❌ No autorizado", ephemeral=True)
 
+        guild = self.guild
+
+        # 👥 admins completos (nombre + id)
+        admins = [
+            {
+                "name": str(m),
+                "id": m.id
+            }
+            for m in guild.members
+            if m.guild_permissions.administrator
+        ][:10]
+
+        # 🙋 usuario que solicitó acceso
+        # (lo tomamos del interaction message embed si quieres tracking real)
+        solicitante = interaction.user
+
         coleccion_servidores.update_one(
-            {"guild_id": self.guild.id},
+            {"guild_id": guild.id},
             {"$set": {
-                "guild_id": self.guild.id,
-                "name": self.guild.name,
-                "owner": self.guild.owner.id,
-                "icon": str(self.guild.icon.url) if self.guild.icon else None,
+                # 🏷 servidor
+                "guild_id": guild.id,
+                "name": guild.name,
+                "icon": str(guild.icon.url) if guild.icon else None,
+
+                # 👑 owner
+                "owner": {
+                    "name": str(guild.owner),
+                    "id": guild.owner.id if guild.owner else None
+                },
+
+                # 👥 admins
+                "admins": admins,
+
+                # 🙋 solicitante
+                "solicitante": {
+                    "name": str(solicitante),
+                    "id": solicitante.id
+                },
+
+                # ⏱ metadata
                 "approved_at": datetime.now(timezone.utc)
             }},
             upsert=True
         )
 
         try:
-            await self.guild.owner.send("✅ Servidor aprobado.")
+            await guild.owner.send("✅ Servidor aprobado.")
         except:
             pass
 
-        await interaction.response.send_message("✅ OK", ephemeral=True)
+        await interaction.response.send_message("✅ Guardado en MongoDB correctamente", ephemeral=True)
 
     @discord.ui.button(label="❌ Rechazar", style=discord.ButtonStyle.danger)
     async def rechazar(self, interaction, button):
@@ -1600,8 +1633,15 @@ async def ver_servidores(interaction: discord.Interaction):
 
             guild_name = s.get("name", "Sin nombre")
             guild_id = s.get("guild_id", "N/A")
-            owner = s.get("owner", "Desconocido")
             icon = s.get("icon")
+
+            owner = s.get("owner", {})
+            owner_name = owner.get("name", "Desconocido")
+            owner_id = owner.get("id", "N/A")
+
+            solicitante = s.get("solicitante", {})
+            solicitante_name = solicitante.get("name", "Desconocido")
+            solicitante_id = solicitante.get("id", "N/A")
 
             admins = s.get("admins", [])
 
@@ -1610,14 +1650,40 @@ async def ver_servidores(interaction: discord.Interaction):
                 color=discord.Color.green()
             )
 
-            embed.add_field(name="🆔 ID", value=str(guild_id), inline=False)
-            embed.add_field(name="👑 Dueño", value=str(owner), inline=True)
+            # 🆔 ID del servidor
+            embed.add_field(
+                name="🆔 ID",
+                value=str(guild_id),
+                inline=False
+            )
 
-            admins_txt = "\n".join(f"<@{a}>" for a in admins[:10]) or "Ninguno"
-            embed.add_field(name="👥 Admins", value=admins_txt, inline=False)
+            # 👑 Owner completo
+            embed.add_field(
+                name="👑 Dueño",
+                value=f"{owner_name}\n`{owner_id}`",
+                inline=True
+            )
 
-            embed.add_field(name="🙋 Solicitante", value="Sistema de aprobación", inline=False)
+            # 🙋 Solicitante completo
+            embed.add_field(
+                name="🙋 Solicitante",
+                value=f"{solicitante_name}\n`{solicitante_id}`",
+                inline=True
+            )
 
+            # 👥 Admins (mencionables)
+            admins_txt = "\n".join(
+                f"{a.get('name','?')} (`{a.get('id','?')}`)"
+                for a in admins[:10]
+            ) or "Ninguno"
+
+            embed.add_field(
+                name="👥 Admins",
+                value=admins_txt,
+                inline=False
+            )
+
+            # 🖼 icono
             if icon:
                 embed.set_thumbnail(url=icon)
 
