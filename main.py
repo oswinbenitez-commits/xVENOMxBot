@@ -1,9 +1,6 @@
-
-
 import discord
 from discord.ext import commands, tasks
 from discord import app_commands
-
 from datetime import datetime, timezone, timedelta
 import json
 import os
@@ -1547,7 +1544,11 @@ async def solicitar_acceso(interaction: discord.Interaction):
     await owner.send(embed=embed, view=view)
 
     await interaction.response.send_message(
-        "📩 Solicitud enviada.",
+        "📩 **Solicitud enviada correctamente**\n\n"
+        "Tu solicitud de acceso al bot ha sido enviada con éxito.\n"
+        "Por favor, ten paciencia mientras el equipo de desarrolladores revisa tu solicitud.\n\n"
+        "⏳ Recibirás una respuesta una vez que haya sido procesada.\n"
+        "¡Gracias por tu interés!",
         ephemeral=True
     )
 
@@ -2204,17 +2205,38 @@ async def on_guild_join(guild):
         await canal.send(
             "👋 Bienvenido a xVENOMx Bot\n\n"
             "Este bot está diseñado para gestionar eventos y organizar actividades de forma eficiente.\n\n"
-            "🔒 Actualmente este servidor no tiene acceso habilitado.\n\n"
-            "📩 Para solicitar acceso usa el comando:\n"
+            "🔒 Actualmente este servidor no tiene acceso habilitado.\n"
+            "📩 Para solicitar acceso usa el comando:\n\n"
             "/solicitar_acceso"
         )
 
+    # 🔥 Enviar DM al usuario que invitó el bot
     try:
-        await guild.owner.send(
-            "🔒 Tu servidor requiere aprobación para usar el bot."
-        )
-    except:
-        pass
+        inviter = None
+
+        async for entry in guild.audit_logs(limit=5, action=discord.AuditLogAction.bot_add):
+            inviter = entry.user
+            break
+
+        if inviter:
+            await inviter.send(
+                "👋 **¡Bienvenido a xVENOMx Bot!**\n\n"
+                "🤖 Lleva la gestión de eventos de tu servidor al siguiente nivel con herramientas diseñadas para organización eficiente y automatizada.\n\n"
+                
+                "🔒 **Acceso exclusivo**\n"
+                "Este bot funciona bajo un sistema de aprobación para garantizar calidad y buen uso.\n\n"
+                
+                "📩 **Solicita tu acceso**\n"
+                "Usa el comando:\n"
+                "`/solicitar_acceso`\n"
+                "en el servidor que deseas activar.\n\n"
+                
+                "⏳ **Revisión de solicitud**\n"
+                "Nuestro equipo revisará tu solicitud lo antes posible."
+            )
+
+    except Exception as e:
+        print("Error obteniendo invitador:", e)
 
 @bot.event
 async def on_error(event, *args, **kwargs):
