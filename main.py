@@ -465,24 +465,33 @@ def construir_embed(evento):
 class BotonRol(discord.ui.Button):
     def __init__(self, rol_id, rol):
 
-        emoji = rol.get("emoji")
+        emoji_raw = rol.get("emoji")
+        emoji = None
 
-        if isinstance(emoji, str) and emoji.startswith("<") and emoji.endswith(">"):
-            emoji = discord.PartialEmoji.from_str(emoji)
+        if emoji_raw:
+            emoji_raw = emoji_raw.strip()
 
-        if emoji:
-            super().__init__(
-                label=rol["nombre"],
-                emoji=emoji,
-                style=discord.ButtonStyle.secondary,
-                custom_id=f"rol_{rol_id}"
-            )
-        else:
-            super().__init__(
-                label=rol["nombre"],
-                style=discord.ButtonStyle.secondary,
-                custom_id=f"rol_{rol_id}"
-            )
+            # ✅ Emoji custom <:name:id>
+            if emoji_raw.startswith("<") and emoji_raw.endswith(">"):
+                try:
+                    emoji = discord.PartialEmoji.from_str(emoji_raw)
+                except:
+                    emoji = None
+
+            # ✅ Emoji unicode (ej: 🛡️)
+            elif len(emoji_raw) <= 3:
+                emoji = emoji_raw
+
+            # ❌ Cualquier otra cosa inválida
+            else:
+                emoji = None
+
+        super().__init__(
+            label=rol["nombre"],
+            emoji=emoji,  # ← SOLO si es válido
+            style=discord.ButtonStyle.secondary,
+            custom_id=f"rol_{rol_id}"
+        )
 
         self.rol_id = rol_id
 
