@@ -789,7 +789,7 @@ class ConfirmarUsarPlantillaView(discord.ui.View):
             embed=None,
             view=None
         )
-        await interaction.response.defer(ephemeral=True)
+        
 
     @discord.ui.button(label="Cancelar", style=discord.ButtonStyle.danger)  # antes era "Eliminar"
     async def cancelar(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -1312,7 +1312,7 @@ class SolicitudAccesoView(discord.ui.View):
 # RESPUESTA AL ADMIN
 # =========================
         await interaction.response.send_message(
-            f"✅ El servidor '{guild.name}' ha sido autorizado correctamente",
+            f"✅ El Servidor \"{guild.name}\" ha sido autorizado correctamente",
             ephemeral=True
         )
 
@@ -2290,7 +2290,7 @@ async def on_ready():
 @bot.event
 async def on_guild_join(guild):
 
-    canal = discord.utils.get(guild.text_channels)
+    canal = guild.system_channel or guild.text_channels[0]
 
     if canal:
         await canal.send(
