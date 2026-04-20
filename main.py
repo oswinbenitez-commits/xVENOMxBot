@@ -644,6 +644,7 @@ class ConfirmarEliminarView(discord.ui.View):
 
         canal = interaction.channel
         try:
+            await interaction.response.defer()
             mensaje = await canal.fetch_message(self.message_id)
             await mensaje.delete()
         except Exception:
@@ -653,8 +654,7 @@ class ConfirmarEliminarView(discord.ui.View):
         eventos.pop(self.message_id, None)
 
         # Cierra la ventana ephemeral sin dejar mensaje residual
-        await interaction.response.edit_message(content=" ", view=None)
-
+        await interaction.edit_original_response(content=" ", view=None)
         
         
         eliminar_evento_db(interaction.guild.id, self.message_id)
@@ -789,6 +789,7 @@ class ConfirmarUsarPlantillaView(discord.ui.View):
             embed=None,
             view=None
         )
+        await interaction.response.defer(ephemeral=True)
 
     @discord.ui.button(label="Cancelar", style=discord.ButtonStyle.danger)  # antes era "Eliminar"
     async def cancelar(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -796,8 +797,8 @@ class ConfirmarUsarPlantillaView(discord.ui.View):
             await interaction.response.send_message("❌ Solo tú puedes cerrar esto.", ephemeral=True)
             return
 
-        await interaction.response.edit_message(
-            content="❌ Uso de plantilla cancelado.",
+        await interaction.edit_original_response(
+            content=f"✅ Plantilla **{self.plantilla['nombre']}** publicada correctamente.",
             embed=None,
             view=None
         )
@@ -1085,7 +1086,7 @@ class ConfirmarOcultarFechaHora(discord.ui.View):
 
     @discord.ui.button(label="Sí, ocultar", style=discord.ButtonStyle.danger)
     async def confirmar(self, interaction: discord.Interaction, button: discord.ui.Button):
-
+        await interaction.response.defer()
         evento = eventos.get(self.message_id)
         if not evento:
             await interaction.response.send_message("❌ Evento no encontrado.", ephemeral=True)
@@ -1119,7 +1120,7 @@ class ConfirmarOcultarFechaHora(discord.ui.View):
 
         guardar_evento_db(interaction.guild.id, self.message_id, evento)
 
-        await interaction.response.edit_message(
+        await interaction.edit_original_response(
             content="🚫 Fecha y hora ocultadas.",
             view=None
         )
@@ -1215,7 +1216,7 @@ class EditarCampoModal(discord.ui.Modal):
 class SolicitudAccesoView(discord.ui.View):
     def __init__(self, guild):
         super().__init__()
-        self.guild = guild
+        super().__init__(timeout=None)
 
     async def desactivar_botones(self):
         for item in self.children:
@@ -1795,7 +1796,7 @@ class ConfirmarEliminacionView(discord.ui.View):
 
     @discord.ui.button(label="✅ Confirmar", style=discord.ButtonStyle.success)
     async def confirmar(self, interaction: discord.Interaction, button: discord.ui.Button):
-
+        await interaction.response.defer()
         guild_id = self.server["guild_id"]
         name = self.server.get("name", "Desconocido")
 
@@ -1807,7 +1808,7 @@ class ConfirmarEliminacionView(discord.ui.View):
                 ephemeral=True
             )
 
-        await interaction.response.edit_message(
+        await interaction.edit_original_response(
             content=f"🗑 El servidor **{name}** ha sido eliminado correctamente.",
             view=None,
             embed=None
