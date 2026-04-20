@@ -626,7 +626,7 @@ class EventoView(discord.ui.View):
 #  -------------Eliminado de Evento------------------
 class ConfirmarEliminarView(discord.ui.View):
     def __init__(self, message_id):
-        super().__init__(timeout=30)
+        super().__init__(timeout=None)
         self.message_id = message_id
 
     @discord.ui.button(label="Sí", style=discord.ButtonStyle.danger)
@@ -726,7 +726,7 @@ class SeleccionarPlantilla(discord.ui.Select):
 #========== comando usar plantilas View==========
 class SeleccionarPlantillaView(discord.ui.View):
     def __init__(self, user_id, guild_id):
-        super().__init__(timeout=60)
+        super().__init__(timeout=None)
         self.user_id = user_id
         # Crear el Select y agregarlo a la View
         self.add_item(SeleccionarPlantilla(user_id, guild_id))
@@ -737,7 +737,7 @@ class SeleccionarPlantillaView(discord.ui.View):
 
 class ConfirmarUsarPlantillaView(discord.ui.View):
     def __init__(self, user_id, plantilla):
-        super().__init__(timeout=60)
+        super().__init__(timeout=None)
         self.user_id = user_id
         self.plantilla = plantilla
 
@@ -874,7 +874,7 @@ class SeleccionarPlantillaEliminar(discord.ui.Select):
 #========== comando eliminar plantilla view ==========
 class SeleccionarPlantillaEliminarView(discord.ui.View):
     def __init__(self, user_id, guild_id):
-        super().__init__(timeout=60)
+        super().__init__(timeout=None)
         self.add_item(SeleccionarPlantillaEliminar(user_id, guild_id))
 
 
@@ -883,7 +883,7 @@ class SeleccionarPlantillaEliminarView(discord.ui.View):
 # =============================
 class ConfirmarEliminarPlantillaView(discord.ui.View):
     def __init__(self, user_id, nombre_plantilla):
-        super().__init__(timeout=30)
+        super().__init__(timeout=None)
         self.user_id = user_id
         self.nombre = nombre_plantilla
 
@@ -923,7 +923,7 @@ class ConfirmarEliminarPlantillaView(discord.ui.View):
 # =============================
 class ConfirmarGuardarPlantillaView(discord.ui.View):
     def __init__(self, user_id, titulo, descripcion, roles, rol, imagen):
-        super().__init__(timeout=60)
+        super().__init__(timeout=None)
         self.user_id = user_id
         self.titulo = titulo
         self.descripcion = descripcion
@@ -1080,7 +1080,7 @@ class ConfiguracionSelect(discord.ui.Select):
         )
 class ConfirmarOcultarFechaHora(discord.ui.View):
     def __init__(self, user_id, message_id):
-        super().__init__(timeout=30)
+        super().__init__(timeout=None)
         self.user_id = user_id
         self.message_id = message_id
 
@@ -1215,7 +1215,6 @@ class EditarCampoModal(discord.ui.Modal):
 
 class SolicitudAccesoView(discord.ui.View):
     def __init__(self, guild):
-        super().__init__()
         super().__init__(timeout=None)
 
     async def desactivar_botones(self):
@@ -1282,7 +1281,7 @@ class SolicitudAccesoView(discord.ui.View):
 # 📢 MENSAJE EN EL SERVIDOR
 # =========================
         try:
-            canal = discord.utils.get(guild.text_channels)
+            canal = guild.system_channel or (guild.text_channels[0] if guild.text_channels else None)
 
             if canal:
                 await canal.send(
@@ -1785,13 +1784,13 @@ class EliminarServidorSelect(discord.ui.Select):
 
 class EliminarServidorView(discord.ui.View):
     def __init__(self, docs):
-        super().__init__(timeout=60)
+        super().__init__(timeout=None)
         self.add_item(EliminarServidorSelect(docs))
 
 
 class ConfirmarEliminacionView(discord.ui.View):
     def __init__(self, server):
-        super().__init__(timeout=60)
+        super().__init__(timeout=None)
         self.server = server
 
     @discord.ui.button(label="✅ Confirmar", style=discord.ButtonStyle.success)
