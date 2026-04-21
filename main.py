@@ -659,10 +659,14 @@ class ConfirmarEliminarView(discord.ui.View):
         
         eliminar_evento_db(interaction.guild.id, self.message_id)
 
-    @discord.ui.button(label="No", style=discord.ButtonStyle.secondary)
+    @discord.ui.button(label="❌ Cancelar", style=discord.ButtonStyle.danger)
     async def cancelar(self, interaction: discord.Interaction, button: discord.ui.Button):
-        # Solo cerrar la ventana
-        await interaction.response.edit_message(content=None, view=None)
+
+        await interaction.response.edit_message(
+            content="❌ Cancelado.",
+            embed=None,
+            view=None
+        )
 
 #========== comando usar plantilas Select==========
 class SeleccionarPlantilla(discord.ui.Select):
