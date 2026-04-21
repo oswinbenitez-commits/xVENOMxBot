@@ -663,15 +663,17 @@ class ConfirmarEliminarView(discord.ui.View):
             embed=None
         )
 
-    @discord.ui.button(label="❌ Cancelar", style=discord.ButtonStyle.danger)
+    @discord.ui.button(label="Cancelar", style=discord.ButtonStyle.danger)
     async def cancelar(self, interaction: discord.Interaction, button: discord.ui.Button):
 
-        await interaction.response.edit_message(
-            content="❌ Cancelado.",
-            embed=None,
-            view=None
-        )
-#========== comando usar plantilas Select==========
+        if interaction.response.is_done():
+            await interaction.followup.send("❌ Cancelado.", ephemeral=True)
+        else:
+            await interaction.response.edit_message(
+                content="❌ Cancelado.",
+                view=None
+            )
+    #========== comando usar plantilas Select==========
 class SeleccionarPlantilla(discord.ui.Select):
     def __init__(self, user_id, guild_id):
         plantillas_actuales = obtener_plantillas_db(guild_id)
