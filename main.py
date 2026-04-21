@@ -642,25 +642,26 @@ class ConfirmarEliminarView(discord.ui.View):
             return
 
         canal = interaction.channel
+        if not canal:
+            return await interaction.response.edit_message(
+                content="❌ Canal no disponible.",
+                view=None
+            )
 
         try:
             mensaje = await canal.fetch_message(self.message_id)
             await mensaje.delete()
-        except:
-            pass
+        except Exception as e:
+            print("Error eliminando mensaje:", e)
 
         eventos.pop(self.message_id, None)
         eliminar_evento_db(interaction.guild.id, self.message_id)
 
-        # ✅ cerrar la vista correctamente
         await interaction.response.edit_message(
             content="✅ Evento eliminado.",
             view=None,
             embed=None
         )
-        
-        
-        eliminar_evento_db(interaction.guild.id, self.message_id)
 
     @discord.ui.button(label="❌ Cancelar", style=discord.ButtonStyle.danger)
     async def cancelar(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -670,7 +671,6 @@ class ConfirmarEliminarView(discord.ui.View):
             embed=None,
             view=None
         )
-
 #========== comando usar plantilas Select==========
 class SeleccionarPlantilla(discord.ui.Select):
     def __init__(self, user_id, guild_id):
