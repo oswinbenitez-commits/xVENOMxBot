@@ -800,14 +800,15 @@ class ConfirmarUsarPlantillaView(discord.ui.View):
         )
         
 
-    @discord.ui.button(label="Cancelar", style=discord.ButtonStyle.danger)  # antes era "Eliminar"
+    @discord.ui.button(label="Cancelar", style=discord.ButtonStyle.danger)
     async def cancelar(self, interaction: discord.Interaction, button: discord.ui.Button):
+
         if interaction.user.id != self.user_id:
             await interaction.response.send_message("❌ Solo tú puedes cerrar esto.", ephemeral=True)
             return
 
-        await interaction.edit_original_response(
-            content=f"✅ Plantilla **{self.plantilla['nombre']}** publicada correctamente.",
+        await interaction.response.edit_message(
+            content="❌ Cancelado.",
             embed=None,
             view=None
         )
