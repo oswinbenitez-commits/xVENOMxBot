@@ -637,24 +637,27 @@ class ConfirmarEliminarView(discord.ui.View):
             await interaction.response.edit_message(content=" ", view=None)
             return
 
-        # Verificar que sea el creador
         if interaction.user.id != evento["creador"]:
             await interaction.response.send_message("❌ No tienes permiso.", ephemeral=True)
             return
 
         canal = interaction.channel
+
         try:
-            await interaction.response.defer()
             mensaje = await canal.fetch_message(self.message_id)
             await mensaje.delete()
-        except Exception:
+        except:
             pass
 
-
         eventos.pop(self.message_id, None)
+        eliminar_evento_db(interaction.guild.id, self.message_id)
 
-        # Cierra la ventana ephemeral sin dejar mensaje residual
-        await interaction.edit_original_response(content=" ", view=None)
+        # ✅ cerrar la vista correctamente
+        await interaction.response.edit_message(
+            content="✅ Evento eliminado.",
+            view=None,
+            embed=None
+        )
         
         
         eliminar_evento_db(interaction.guild.id, self.message_id)
