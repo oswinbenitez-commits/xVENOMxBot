@@ -8,6 +8,7 @@ import json
 import os
 import copy
 import asyncio
+from discord import Object
 
 from pymongo import MongoClient
 
@@ -2594,11 +2595,16 @@ async def on_ready():
         bot.add_view(EventoView(int(msg_id)))
 
     # 🔹 Sincronización global de comandos
+# 🔹 Sincronización SOLO en panel admin
     try:
-        synced = await bot.tree.sync()
-        print(f"✅ {len(synced)} comandos sincronizados globalmente")
+        guild_panel = Object(id=PANEL_GUILD_ID)
+
+        bot.tree.copy_global_to(guild=guild_panel)
+        synced = await bot.tree.sync(guild=guild_panel)
+
+        print(f"✅ {len(synced)} comandos sincronizados SOLO en panel")
     except Exception as e:
-        print("❌ Error al sincronizar:", e)
+        print("❌ Error al sincronizar panel:", e)
 
     # 🔹 Iniciar loops si no están corriendo
     if not gestionar_eventos.is_running():
