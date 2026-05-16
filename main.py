@@ -1,3 +1,5 @@
+from email.mime import message
+
 import discord
 from discord.ext import commands, tasks
 from discord import app_commands
@@ -2196,7 +2198,8 @@ async def evento_rapido(
         )
         return
 
-    evento_id = interaction.id
+    message = await interaction.original_response()
+    evento_id = message.id
 
     eventos[evento_id] = {
         "nombre": nombre,
@@ -2321,6 +2324,11 @@ async def gestionar_eventos():
     ahora = datetime.now(timezone.utc)
 
     for message_id, evento in list(eventos.items()):
+
+        # 🔥 EVENTOS RÁPIDOS: NO TOCAR NADA (NI EDITAR NI CERRAR NI BORRAR)
+        if evento.get("tipo") == "rapido":
+            continue
+
         canal = bot.get_channel(evento["canal"])
         if not canal:
             continue
@@ -2330,18 +2338,13 @@ async def gestionar_eventos():
         except:
             continue
 
-
         dt_evento = obtener_datetime_evento(evento)
-        
-        # 🔥 NO AUTO-CERRAR EVENTOS RÁPIDOS
-        if evento.get("tipo") == "rapido":
-            continue
 
-        # 🔥 SI NO HAY FECHA VÁLIDA, SALTAR
+        # 🔥 SI NO HAY FECHA VÁLIDA, SOLO IGNORAR
         if dt_evento is None:
             continue
-        # 🔥 EVENTOS INCOMPLETOS (Pendiente: fecha o hora)
-# 🔥 EVENTOS INCOMPLETOS (Pendiente: fecha o hora)
+
+        # 🔥 SOLO EVENTOS NORMALES SIGUEN AQUÍ ABAJO
         if evento.get("fecha") == "Pendiente" or evento.get("hora") == "Pendiente":
 
             creado = evento.get("created_at")
@@ -2349,7 +2352,7 @@ async def gestionar_eventos():
             if isinstance(creado, str):
                 creado = datetime.fromisoformat(creado)
 
-            if creado and (ahora - creado).total_seconds() >= 86400:  # 24 horas
+            if creado and (ahora - creado).total_seconds() >= 86400:
 
                 evento["cerrado"] = True
 
@@ -2360,29 +2363,24 @@ async def gestionar_eventos():
 
                 eliminar_evento_db(evento["guild_id"], message_id)
                 eventos.pop(message_id, None)
-
                 continue
 
         minutos_para_evento = (dt_evento - ahora).total_seconds() / 60
         minutos_restantes = int((dt_evento - ahora).total_seconds() // 60)
 
-        # actualizar contador
         if evento.get("ultimo_minuto") != minutos_restantes:
             evento["ultimo_minuto"] = minutos_restantes
             try:
                 await mensaje.edit(embed=construir_embed(evento))
-            except Exception:
+            except:
                 pass
 
-        # RECORDATORIO 20 MIN
-        if 19 <= minutos_para_evento <= 20 and not evento.get("recordatorio_enviado", False):
+        if 19 <= minutos_para_evento <= 20 and not evento.get("recordatorio_enviado"):
             await enviar_recordatorio(evento, message_id)
 
-        # DM 10 MIN
-        if 9 <= minutos_para_evento <= 10 and not evento.get("dm_enviado", False):
+        if 9 <= minutos_para_evento <= 10 and not evento.get("dm_enviado"):
             await enviar_dm_recordatorio(evento)
 
-        # cerrar evento
         if minutos_para_evento < -90:
             evento["cerrado"] = True
 
@@ -2391,13 +2389,8 @@ async def gestionar_eventos():
             except:
                 pass
 
-            # 🔥 BORRAR DE MONGODB
             eliminar_evento_db(evento["guild_id"], message_id)
-
-            # 🔥 BORRAR DE MEMORIA
             eventos.pop(message_id, None)
-
-            continue
 
 # =============================
 # COMANDO /HELP VISUAL FORMATEADO
