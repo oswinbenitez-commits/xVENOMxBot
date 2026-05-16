@@ -1403,7 +1403,8 @@ class RolSelect(discord.ui.Select):
             placeholder="Selecciona un rol",
             min_values=1,
             max_values=1,
-            options=options
+            options=options,
+            custom_id=f"rol_select_{evento_id}"
         )
 
     async def callback(self, interaction: discord.Interaction):
@@ -1453,7 +1454,8 @@ class QuitarButton(discord.ui.Button):
 
         super().__init__(
             label="❌ Quitar",
-            style=discord.ButtonStyle.danger
+            style=discord.ButtonStyle.danger,
+            custom_id=f"quitar_{evento_id}"
         )
 
     async def callback(self, interaction: discord.Interaction):
@@ -1502,7 +1504,8 @@ class CerrarAbrirButton(discord.ui.Button):
 
         super().__init__(
             label=label,
-            style=discord.ButtonStyle.secondary
+            style=discord.ButtonStyle.secondary,
+            custom_id=f"cerrar_abrir_{evento_id}"
         )
 
     async def callback(self, interaction: discord.Interaction):
