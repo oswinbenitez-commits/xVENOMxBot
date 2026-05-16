@@ -5,7 +5,7 @@ from datetime import datetime, timezone, timedelta
 import json
 import os
 import copy
-
+import asyncio
 
 from pymongo import MongoClient
 
@@ -2206,7 +2206,8 @@ async def evento_rapido(
         "ocupados": {},
         "creador": interaction.user.id,
         "cerrado": False,
-        "tipo": "rapido"  # 🔥 SOLO ESTE CAMBIO
+        "tipo": "rapido",  # 🔥 SOLO ESTE CAMBIO
+        "canal": interaction.channel_id,
     }
 
     embed = construir_embed(eventos[evento_id])
@@ -2335,7 +2336,7 @@ async def gestionar_eventos():
         # 🔥 NO AUTO-CERRAR EVENTOS RÁPIDOS
         if evento.get("tipo") == "rapido":
             continue
-        
+
         # 🔥 SI NO HAY FECHA VÁLIDA, SALTAR
         if dt_evento is None:
             continue
