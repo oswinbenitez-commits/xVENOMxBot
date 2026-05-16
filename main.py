@@ -457,7 +457,39 @@ def construir_embed(evento):
         embed.set_footer(text="Evento finalizado • Panel bloqueado")
 
     return embed
+# --------------------------------------------------
+# EMBED eventos_rapidos
+# --------------------------------------------------
 
+def construir_embed(evento):
+    descripcion = []
+
+    descripcion.append(f"Date: **{evento['fecha']}**")
+    descripcion.append(f"Time (UTC): **{evento['hora']}**")
+    descripcion.append("")
+    descripcion.append("⚔️ **Roles**")
+    descripcion.append("")
+
+    for i, rol in enumerate(evento["roles"], start=1):
+        user_id = evento["ocupados"].get(rol)
+
+        if user_id:
+            texto = f"✅ {i}. {rol} — <@{user_id}>"
+        else:
+            texto = f"🔸 {i}. {rol}"
+
+        descripcion.append(texto)
+
+    embed = discord.Embed(
+        title=evento["nombre"],
+        description="\n".join(descripcion),
+        color=discord.Color.blurple()
+    )
+
+    if evento["cerrado"]:
+        embed.set_footer(text="Evento cerrado")
+
+    return embed
 
 # =============================
 # BOTONES
@@ -1353,6 +1385,172 @@ class SolicitudAccesoView(discord.ui.View):
         await self.desactivar_botones()
         await interaction.message.edit(view=self)
 
+# --------------------------------------------------
+# SELECT eventos_rapidos
+# --------------------------------------------------
+
+class RolSelect(discord.ui.Select):
+    def __init__(self, evento_id):
+        self.evento_id = evento_id
+        evento = eventos[evento_id]
+
+        options = [
+            discord.SelectOption(label=rol, value=rol)
+            for rol in evento["roles"]
+        ]
+
+        super().__init__(
+            placeholder="Selecciona un rol",
+            min_values=1,
+            max_values=1,
+            options=options
+        )
+
+    async def callback(self, interaction: discord.Interaction):
+        evento = eventos[self.evento_id]
+
+        if evento["cerrado"]:
+            await interaction.response.send_message(
+                "Este evento está cerrado.",
+                ephemeral=True
+            )
+            return
+
+        rol_nuevo = self.values[0]
+        user_id = interaction.user.id
+
+        rol_actual = None
+        for rol, uid in evento["ocupados"].items():
+            if uid == user_id:
+                rol_actual = rol
+                break
+
+        if rol_nuevo in evento["ocupados"] and evento["ocupados"][rol_nuevo] != user_id:
+            await interaction.response.send_message(
+                "Ese rol ya está ocupado.",
+                ephemeral=True
+            )
+            return
+
+        if rol_actual:
+            del evento["ocupados"][rol_actual]
+
+        evento["ocupados"][rol_nuevo] = user_id
+
+        await interaction.response.edit_message(
+            embed=construir_embed(evento),
+            view=EventoView(self.evento_id)
+        )
+
+
+# --------------------------------------------------
+# QUITAR eventos_rapidos
+# --------------------------------------------------
+
+class QuitarButton(discord.ui.Button):
+    def __init__(self, evento_id):
+        self.evento_id = evento_id
+
+        super().__init__(
+            label="❌ Quitar",
+            style=discord.ButtonStyle.danger
+        )
+
+    async def callback(self, interaction: discord.Interaction):
+        evento = eventos[self.evento_id]
+
+        if evento["cerrado"]:
+            await interaction.response.send_message(
+                "Este evento está cerrado.",
+                ephemeral=True
+            )
+            return
+
+        user_id = interaction.user.id
+        encontrado = None
+
+        for rol, uid in evento["ocupados"].items():
+            if uid == user_id:
+                encontrado = rol
+                break
+
+        if not encontrado:
+            await interaction.response.send_message(
+                "No estás anotado en este evento.",
+                ephemeral=True
+            )
+            return
+
+        del evento["ocupados"][encontrado]
+
+        await interaction.response.edit_message(
+            embed=construir_embed(evento),
+            view=EventoView(self.evento_id)
+        )
+
+
+# --------------------------------------------------
+# CERRAR / ABRIR eventos_rapidos
+# --------------------------------------------------
+
+class CerrarAbrirButton(discord.ui.Button):
+    def __init__(self, evento_id):
+        self.evento_id = evento_id
+        evento = eventos[evento_id]
+
+        label = "🔓 Abrir" if evento["cerrado"] else "🔒 Cerrar"
+
+        super().__init__(
+            label=label,
+            style=discord.ButtonStyle.secondary
+        )
+
+    async def callback(self, interaction: discord.Interaction):
+        evento = eventos[self.evento_id]
+
+        es_creador = interaction.user.id == evento["creador"]
+        es_admin = interaction.user.guild_permissions.administrator
+
+        if not es_creador and not es_admin:
+            await interaction.response.send_message(
+                "No tienes permisos para usar este botón.",
+                ephemeral=True
+            )
+            return
+
+        evento["cerrado"] = not evento["cerrado"]
+
+        await interaction.response.edit_message(
+            embed=construir_embed(evento),
+            view=EventoView(self.evento_id)
+        )
+
+
+# --------------------------------------------------
+# VIEW eventos_rapidos
+# --------------------------------------------------
+
+class EventoView(discord.ui.View):
+    def __init__(self, evento_id):
+        super().__init__(timeout=None)
+
+        evento = eventos[evento_id]
+
+        # SI EL EVENTO ESTA CERRADO
+        if evento["cerrado"]:
+
+            # SOLO BOTON ABRIR
+            self.add_item(CerrarAbrirButton(evento_id))
+
+        else:
+
+            # EVENTO ABIERTO
+            self.add_item(RolSelect(evento_id))
+            self.add_item(QuitarButton(evento_id))
+            self.add_item(CerrarAbrirButton(evento_id))
+
+
+
 ## ## ## ## ## ## #
 #  Comando /crear_plantilla
 # ## ## ## ## ## #
@@ -1956,6 +2154,73 @@ async def ver_servidores(interaction: discord.Interaction):
             content=f"📄 Servidores aprobados ({idx}/{total})",
             embeds=embeds
         )
+# --------------------------------------------------
+# COMANDO eventos_rapidos
+# --------------------------------------------------
+
+@bot.tree.command(
+    name="evento_rapido",
+    description="Crear evento rápido"
+)
+@app_commands.describe(
+    nombre="Nombre del evento. Ejemplo: Grupales Thetford",
+    fecha="Fecha del evento. Ejemplo: 07-05-2026",
+    hora_utc="Hora del evento. Ejemplo: 02:00",
+    mencion="Rol que será notificado",
+    roles="Roles separados por '-' Ejemplo: Tanque-Healer-DPS"
+)
+async def evento_rapido(
+    interaction: discord.Interaction,
+    nombre: str,
+    fecha: str,
+    hora_utc: str,
+    mencion: discord.Role,
+    roles: str
+):
+    lista_roles = [r.strip() for r in roles.split("-") if r.strip()]
+
+    if len(lista_roles) == 0:
+        await interaction.response.send_message(
+            "Debes ingresar al menos un rol.",
+            ephemeral=True
+        )
+        return
+
+    if len(lista_roles) > 22:
+        await interaction.response.send_message(
+            "Máximo 22 roles por evento.",
+            ephemeral=True
+        )
+        return
+
+    evento_id = interaction.id
+
+    eventos[evento_id] = {
+        "nombre": nombre,
+        "fecha": fecha,
+        "hora": hora_utc,
+        "roles": lista_roles,
+        "ocupados": {},
+        "creador": interaction.user.id,
+        "cerrado": False,
+    }
+
+    embed = construir_embed(eventos[evento_id])
+
+    await interaction.response.send_message(
+        embed=embed,
+        view=EventoView(evento_id)
+    )
+
+    mensaje_ping = await interaction.followup.send(
+        content=mencion.mention,
+        allowed_mentions=discord.AllowedMentions(roles=True),
+        wait=True
+    )
+
+    await asyncio.sleep(4)
+
+    await mensaje_ping.delete()
 
 # =============================
 # FUNCION PARA ENVIAR RECORDATORIO 20 MIN ANTES
