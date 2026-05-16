@@ -2182,6 +2182,7 @@ async def evento_rapido(
     mencion: discord.Role,
     roles: str
 ):
+
     lista_roles = [r.strip() for r in roles.split("-") if r.strip()]
 
     if len(lista_roles) == 0:
@@ -2198,9 +2199,21 @@ async def evento_rapido(
         )
         return
 
+    # 1️⃣ PRIMERO responder sin view
+    await interaction.response.send_message(
+        embed=discord.Embed(
+            title="⏳ Creando evento rápido...",
+            color=discord.Color.orange()
+        ),
+        ephemeral=False
+    )
+
     message = await interaction.original_response()
+
+    # 2️⃣ ahora sí usamos el ID real del mensaje
     evento_id = message.id
 
+    # 3️⃣ guardar evento
     eventos[evento_id] = {
         "nombre": nombre,
         "fecha": fecha,
@@ -2209,26 +2222,28 @@ async def evento_rapido(
         "ocupados": {},
         "creador": interaction.user.id,
         "cerrado": False,
-        "tipo": "rapido",  # 🔥 SOLO ESTE CAMBIO
+        "tipo": "rapido",
         "canal": interaction.channel_id,
     }
 
+    # 4️⃣ embed final
     embed = construir_embed(eventos[evento_id])
 
-    await interaction.response.send_message(
+    # 5️⃣ editar mensaje con embed + view
+    await message.edit(
+        content=None,
         embed=embed,
         view=EventoView(evento_id)
     )
 
+    # 6️⃣ ping temporal del rol
     mensaje_ping = await interaction.channel.send(
         content=mencion.mention,
         allowed_mentions=discord.AllowedMentions(roles=True)
     )
 
     await asyncio.sleep(4)
-
     await mensaje_ping.delete()
-
 # =============================
 # FUNCION PARA ENVIAR RECORDATORIO 20 MIN ANTES
 # =============================
