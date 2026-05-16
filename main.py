@@ -13,7 +13,7 @@ from pymongo import MongoClient
 
 MONGO_URI = os.environ.get("MONGO_URI")
 ADMIN_ID = int(os.environ.get("ADMIN_ID", "0"))
-PANEL_GUILD_ID = int(os.environ.get("PANEL_GUILD_ID", "0"))
+PANEL_GUILD_ID = 1492363323314933860
 
 if not MONGO_URI:
     raise Exception("❌ MONGO_URI no está configurado en las variables de entorno")
@@ -1267,6 +1267,7 @@ class EditarCampoModal(discord.ui.Modal):
 class SolicitudAccesoView(discord.ui.View):
     def __init__(self, guild):
         super().__init__(timeout=None)
+        self.guild = guild
 
     async def desactivar_botones(self):
         for item in self.children:
@@ -1870,8 +1871,15 @@ async def eliminar_plantilla(interaction: discord.Interaction):
 # agregar_servidor
 # =============================
 @bot.tree.command(name="agregar_servidor", description="Agregar un servidor manualmente a la whitelist")
+@app_commands.guilds(discord.Object(id=PANEL_GUILD_ID))
 async def agregar_servidor(interaction: discord.Interaction, guild_id: str):
-    
+
+    # 🔒 SOLO EN EL SERVIDOR DE PANEL
+    if interaction.guild is None or interaction.guild.id != PANEL_GUILD_ID:
+        return await interaction.response.send_message(
+            "❌ Este comando solo está disponible en el panel de administración.",
+            ephemeral=True
+        )
     # 🔒 Solo tú (admin del bot)
     if interaction.user.id != ADMIN_ID:
         await interaction.response.send_message("❌ No autorizado.", ephemeral=True)
@@ -2044,7 +2052,14 @@ class ConfirmarEliminacionView(discord.ui.View):
 
 
 @bot.tree.command(name="eliminar_servidor", description="Eliminar un servidor de la whitelist del bot")
+@app_commands.guilds(discord.Object(id=PANEL_GUILD_ID))
 async def eliminar_servidor(interaction: discord.Interaction):
+
+    if interaction.guild is None or interaction.guild.id != PANEL_GUILD_ID:
+        return await interaction.response.send_message(
+            "❌ Este comando solo está disponible en el panel de administración.",
+            ephemeral=True
+        )
 
     if interaction.user.id != ADMIN_ID:
         return await interaction.response.send_message(
@@ -2071,7 +2086,14 @@ async def eliminar_servidor(interaction: discord.Interaction):
 # ver_servidores
 # =============================
 @bot.tree.command(name="ver_servidores", description="Muestra todos los servidores aprobados")
+@app_commands.guilds(discord.Object(id=PANEL_GUILD_ID))
 async def ver_servidores(interaction: discord.Interaction):
+
+    if interaction.guild is None or interaction.guild.id != PANEL_GUILD_ID:
+        return await interaction.response.send_message(
+            "❌ Este comando solo está disponible en el panel de administración.",
+            ephemeral=True
+        )
 
     # 🔐 Solo tú
     if interaction.user.id != ADMIN_ID:
