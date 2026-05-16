@@ -252,6 +252,9 @@ def obtener_datetime_evento(evento):
     
 
 def evento_finalizado(evento):
+
+    if evento.get("tipo") == "rapido":
+        return False
     inicio = obtener_datetime_evento(evento)
     # 🔹 Si no hay fecha válida, nunca está finalizado
     if inicio is None:
@@ -262,6 +265,10 @@ def evento_finalizado(evento):
 
 async def marcar_eventos_finalizados():
     for evento in eventos.values():
+
+        if evento.get("tipo") == "rapido":
+            continue  # 🔥 NO TOCAR EVENTOS RÁPIDOS
+
         if not evento.get("cerrado", False) and evento_finalizado(evento):
             evento["cerrado"] = True
             
@@ -1442,7 +1449,7 @@ class RolSelect(discord.ui.Select):
 
         await interaction.response.edit_message(
             embed=construir_embed(evento),
-            view=EventoView(self.evento_id)
+            view=EventoRapidoView(self.evento_id)
         )
 
 
@@ -1489,7 +1496,7 @@ class QuitarButton(discord.ui.Button):
 
         await interaction.response.edit_message(
             embed=construir_embed(evento),
-            view=EventoView(self.evento_id)
+            view=EventoRapidoView(self.evento_id)
         )
 
 
@@ -1527,7 +1534,7 @@ class CerrarAbrirButton(discord.ui.Button):
 
         await interaction.response.edit_message(
             embed=construir_embed(evento),
-            view=EventoView(self.evento_id)
+            view=EventoRapidoView(self.evento_id)
         )
 
 
@@ -1535,7 +1542,7 @@ class CerrarAbrirButton(discord.ui.Button):
 # VIEW eventos_rapidos
 # --------------------------------------------------
 
-class EventoView(discord.ui.View):
+class EventoRapidoView(discord.ui.View):
     def __init__(self, evento_id):
         super().__init__(timeout=None)
 
