@@ -2582,20 +2582,17 @@ async def usar_plantillas(interaction: discord.Interaction):
 @bot.event
 async def on_ready():
 
-
-    
     print(f"✅ Bot listo: {bot.user}")
 
     # 🔹 Reconstruir eventos en memoria desde el JSON
     eventos.clear()
     eventos.update(cargar_eventos_db())
     
-    # 🔹 Registrar botones persistentes para que funcionen después de reiniciar el bot
+    # 🔹 Registrar botones persistentes
     for msg_id in eventos:
         bot.add_view(EventoView(int(msg_id)))
 
-    # 🔹 Sincronización global de comandos
-# 🔹 Sincronización SOLO en panel admin
+    # 🔹 Sincronización SOLO en panel admin
     try:
         guild_panel = Object(id=PANEL_GUILD_ID)
 
@@ -2610,7 +2607,7 @@ async def on_ready():
     if not gestionar_eventos.is_running():
         gestionar_eventos.start()
     if not revisar_eventos.is_running():
-        revisar_eventos.start()    
+        revisar_eventos.start()
 
 @bot.event
 async def on_guild_join(guild):
