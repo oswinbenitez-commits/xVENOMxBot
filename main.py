@@ -2220,10 +2220,9 @@ async def evento_rapido(
         view=EventoView(evento_id)
     )
 
-    mensaje_ping = await interaction.followup.send(
+    mensaje_ping = await interaction.channel.send(
         content=mencion.mention,
-        allowed_mentions=discord.AllowedMentions(roles=True),
-        wait=True
+        allowed_mentions=discord.AllowedMentions(roles=True)
     )
 
     await asyncio.sleep(4)
