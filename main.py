@@ -470,7 +470,7 @@ def construir_embed(evento):
 # EMBED eventos_rapidos
 # --------------------------------------------------
 
-def construir_embed(evento):
+def construir_embed_rapido(evento):
     descripcion = []
 
     descripcion.append(f"Date: **{evento['fecha']}**")
@@ -1448,7 +1448,7 @@ class RolSelect(discord.ui.Select):
         evento["ocupados"][rol_nuevo] = user_id
 
         await interaction.response.edit_message(
-            embed=construir_embed(evento),
+            embed=construir_embed_rapido(evento),
             view=EventoRapidoView(self.evento_id)
         )
 
@@ -1495,7 +1495,7 @@ class QuitarButton(discord.ui.Button):
         del evento["ocupados"][encontrado]
 
         await interaction.response.edit_message(
-            embed=construir_embed(evento),
+            embed=construir_embed_rapido(evento),
             view=EventoRapidoView(self.evento_id)
         )
 
@@ -1533,7 +1533,7 @@ class CerrarAbrirButton(discord.ui.Button):
         evento["cerrado"] = not evento["cerrado"]
 
         await interaction.response.edit_message(
-            embed=construir_embed(evento),
+            embed=construir_embed_rapido(evento),
             view=EventoRapidoView(self.evento_id)
         )
 
@@ -2234,13 +2234,13 @@ async def evento_rapido(
     }
 
     # 4️⃣ embed final
-    embed = construir_embed(eventos[evento_id])
+    embed = construir_embed_rapido(eventos[evento_id])
 
     # 5️⃣ editar mensaje con embed + view
     await message.edit(
         content=None,
         embed=embed,
-        view=EventoView(evento_id)
+        view=EventoRapidoView(evento_id)
     )
 
     # 6️⃣ ping temporal del rol
